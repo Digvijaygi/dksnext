@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, LogOut, Rocket, Trash2, Edit, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminLogin } from './AdminLogin';
 import { ProjectForm } from './ProjectForm';
-import { projects as initialProjects, Project, statusConfig } from '@/data/projects';
+import { Project, statusConfig } from '@/data/projects';
+import { useProjects } from '@/hooks/useProjects';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { GalaxyBackground } from '../GalaxyBackground';
@@ -13,20 +14,12 @@ import { CursorTrail } from '../CursorTrail';
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [projectList, setProjectList] = useState<Project[]>([]);
+  const { projects: projectList, addProject, deleteProject } = useProjects();
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_authenticated');
     if (auth === 'true') {
       setIsAuthenticated(true);
-    }
-    
-    // Load projects from localStorage or use initial
-    const stored = localStorage.getItem('portfolio_projects');
-    if (stored) {
-      setProjectList(JSON.parse(stored));
-    } else {
-      setProjectList(initialProjects);
     }
   }, []);
 
@@ -37,16 +30,13 @@ export const AdminPanel = () => {
   };
 
   const handleSaveProject = (project: Project) => {
-    const updated = [...projectList, project];
-    setProjectList(updated);
-    localStorage.setItem('portfolio_projects', JSON.stringify(updated));
+    addProject(project);
     setShowForm(false);
+    toast.success('Project added! It will appear on the homepage instantly.');
   };
 
   const handleDeleteProject = (id: string) => {
-    const updated = projectList.filter(p => p.id !== id);
-    setProjectList(updated);
-    localStorage.setItem('portfolio_projects', JSON.stringify(updated));
+    deleteProject(id);
     toast.success('Project deleted');
   };
 
@@ -184,10 +174,10 @@ export const AdminPanel = () => {
             transition={{ delay: 0.4 }}
             className="mt-8 p-6 bg-card/40 backdrop-blur border border-border rounded-xl"
           >
-            <h3 className="font-semibold text-foreground mb-2">📝 Note</h3>
+            <h3 className="font-semibold text-foreground mb-2">✅ Full Control Enabled</h3>
             <p className="text-sm text-muted-foreground">
-              Projects added here are stored in browser localStorage. For permanent storage, 
-              copy the project data to <code className="text-primary">src/data/projects.ts</code> file.
+              Projects you add/delete here will instantly update on the main website. 
+              All changes are synced in real-time across the entire portfolio.
             </p>
           </motion.div>
         </div>
