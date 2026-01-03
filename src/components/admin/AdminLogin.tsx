@@ -1,12 +1,29 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, Eye, EyeOff, Shield, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
-// Simple password - change this to your desired password
-const ADMIN_PASSWORD = 'dks@admin2024';
+// Storage key for password
+const PASSWORD_STORAGE_KEY = 'admin_password_hash';
+const DEFAULT_PASSWORD = 'dks@admin2024';
+const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
+// Simple hash function for local storage (not for production security)
+const simpleHash = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+};
+
+const getStoredPasswordHash = () => {
+  return localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash(DEFAULT_PASSWORD);
+};
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -22,8 +39,11 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
     setIsLoading(true);
 
     setTimeout(() => {
-      if (password === ADMIN_PASSWORD) {
+      const storedHash = getStoredPasswordHash();
+      if (simpleHash(password) === storedHash) {
+        const loginTime = Date.now();
         sessionStorage.setItem('admin_authenticated', 'true');
+        sessionStorage.setItem('admin_login_time', loginTime.toString());
         toast.success('Admin access granted!');
         onLogin();
       } else {
