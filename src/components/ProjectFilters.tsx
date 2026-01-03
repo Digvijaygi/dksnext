@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Filter, X, Grid3X3, LayoutList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  ProjectCategory, 
-  ProjectStatus, 
-  categoryLabels, 
+import {
+  Project,
+  ProjectCategory,
+  ProjectStatus,
+  categoryLabels,
   statusConfig,
-  getAllCategories,
-  getAllTags 
 } from "@/data/projects";
 
 interface ProjectFiltersProps {
+  projects: Project[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
   selectedCategory: ProjectCategory | "all";
@@ -25,6 +25,7 @@ interface ProjectFiltersProps {
 }
 
 const ProjectFilters = ({
+  projects,
   searchQuery,
   onSearchChange,
   selectedCategory,
@@ -38,8 +39,18 @@ const ProjectFilters = ({
   totalResults,
 }: ProjectFiltersProps) => {
   const [showFilters, setShowFilters] = useState(false);
-  const categories = getAllCategories();
-  const allTags = getAllTags();
+
+  const categories = useMemo(() => {
+    const set = new Set<ProjectCategory>();
+    projects.forEach((p) => set.add(p.category));
+    return Array.from(set);
+  }, [projects]);
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    projects.forEach((p) => p.tags.forEach((t) => set.add(t)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [projects]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {

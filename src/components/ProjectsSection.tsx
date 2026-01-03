@@ -47,7 +47,7 @@ const ProjectsSection = () => {
     }
 
     return result;
-  }, [searchQuery, selectedCategory, selectedStatus, selectedTags]);
+  }, [projects, searchQuery, selectedCategory, selectedStatus, selectedTags]);
 
   const displayedProjects = showAll ? filteredProjects : filteredProjects.slice(0, 6);
   const hasFilters = searchQuery || selectedCategory !== "all" || selectedTags.length > 0 || selectedStatus !== "all";
@@ -74,6 +74,7 @@ const ProjectsSection = () => {
 
           {/* Filters */}
           <ProjectFilters
+            projects={projects}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             selectedCategory={selectedCategory}
