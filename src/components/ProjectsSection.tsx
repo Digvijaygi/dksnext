@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
-import { projects, ProjectCategory, ProjectStatus, searchProjects } from "@/data/projects";
+import { ProjectCategory, ProjectStatus } from "@/data/projects";
+import { useProjects } from "@/hooks/useProjects";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectFilters from "@/components/ProjectFilters";
 import { Button } from "@/components/ui/button";
 import { FolderOpen } from "lucide-react";
 
 const ProjectsSection = () => {
+  const { projects, isLoading } = useProjects();
   const [showAll, setShowAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ProjectCategory | "all">("all");
@@ -19,7 +21,12 @@ const ProjectsSection = () => {
 
     // Search filter
     if (searchQuery) {
-      result = searchProjects(searchQuery);
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.tags.some(tag => tag.toLowerCase().includes(q))
+      );
     }
 
     // Category filter
