@@ -10,7 +10,7 @@ interface ProjectCardProps {
 const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
   if (viewMode === "list") {
     return (
-      <div className="group relative bg-gradient-card rounded-xl border border-border overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow">
+      <div className="group relative glass-card overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow">
         <div className="flex flex-col md:flex-row">
           {/* Image */}
           <div className="relative w-full md:w-72 lg:w-80 aspect-video md:aspect-auto overflow-hidden bg-secondary flex-shrink-0">
@@ -109,7 +109,7 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
 
   // Grid View (default)
   return (
-    <div className="group relative bg-gradient-card rounded-xl border border-border overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow h-full flex flex-col">
+    <div className="group relative glass-card overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow h-full flex flex-col">
       {/* Image */}
       <div className="relative aspect-video overflow-hidden bg-secondary">
         <img
