@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const navLinks = [
   { label: "Home", href: "#home" },
@@ -51,9 +52,12 @@ const Navbar = () => {
                 {link.label}
               </a>
             ))}
-            <Button variant="hero" size="sm">
-              Hire Me
-            </Button>
+            <Link to="/admin">
+              <Button variant="hero" size="sm" className="gap-2">
+                <Shield size={16} />
+                Admin
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -84,9 +88,12 @@ const Navbar = () => {
               {link.label}
             </a>
           ))}
-          <Button variant="hero" size="sm" className="w-fit">
-            Hire Me
-          </Button>
+          <Link to="/admin" onClick={() => setIsOpen(false)}>
+            <Button variant="hero" size="sm" className="w-fit gap-2">
+              <Shield size={16} />
+              Admin
+            </Button>
+          </Link>
         </div>
       </div>
     </nav>

@@ -10,7 +10,8 @@ interface ProjectCardProps {
 const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
   if (viewMode === "list") {
     return (
-      <div className="group relative glass-card overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow">
+      <div className="group relative glass-card glass-shine overflow-hidden hover:border-primary/30 transition-all duration-700">
+        <div className="absolute -inset-1 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl pointer-events-none" />
         <div className="flex flex-col md:flex-row">
           {/* Image */}
           <div className="relative w-full md:w-72 lg:w-80 aspect-video md:aspect-auto overflow-hidden bg-secondary flex-shrink-0">
@@ -109,7 +110,9 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
 
   // Grid View (default)
   return (
-    <div className="group relative glass-card overflow-hidden hover:border-primary/50 transition-all duration-500 hover:shadow-glow h-full flex flex-col">
+    <div className="group relative glass-card glass-shine overflow-hidden hover:border-primary/30 transition-all duration-700 h-full flex flex-col">
+      {/* Ambient glow on hover */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl pointer-events-none" />
       {/* Image */}
       <div className="relative aspect-video overflow-hidden bg-secondary">
         <img
