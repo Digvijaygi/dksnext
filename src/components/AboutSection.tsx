@@ -1,4 +1,5 @@
-import { Code, Palette, Rocket } from "lucide-react";
+import { motion } from "framer-motion";
+import { Code, Palette, Rocket, Sparkles } from "lucide-react";
 
 const features = [
   {
@@ -20,22 +21,41 @@ const features = [
 
 const AboutSection = () => {
   return (
-    <section id="about" className="py-20 md:py-32 relative">
-      <div className="container mx-auto px-4">
+    <section id="about" className="py-20 md:py-32 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute top-1/4 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-breathe" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
+      
+      <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
           {/* Section Header */}
-          <div className="text-center mb-16">
-            <p className="text-primary font-mono text-sm mb-2">&lt;About /&gt;</p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <p className="text-primary font-mono text-sm mb-2 flex items-center justify-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              &lt;About /&gt;
+            </p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Who I <span className="text-gradient">Am</span>
+              Who I <span className="text-shimmer">Am</span>
             </h2>
             <div className="w-20 h-1 bg-gradient-primary mx-auto rounded-full" />
-          </div>
+          </motion.div>
 
           {/* Content Grid */}
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Text Content */}
-            <div className="space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="space-y-6"
+            >
               <p className="text-lg text-muted-foreground leading-relaxed">
                 नमस्ते! I'm <span className="text-primary font-semibold">Digvijay Sahni</span>, 
                 a passionate Full Stack Developer based in India. With years of experience 
@@ -56,30 +76,39 @@ const AboutSection = () => {
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 pt-6">
-                <div className="text-center p-4 bg-gradient-card rounded-xl border border-border">
-                  <div className="text-3xl font-bold text-gradient">50+</div>
-                  <div className="text-sm text-muted-foreground">Projects</div>
-                </div>
-                <div className="text-center p-4 bg-gradient-card rounded-xl border border-border">
-                  <div className="text-3xl font-bold text-gradient">30+</div>
-                  <div className="text-sm text-muted-foreground">Clients</div>
-                </div>
-                <div className="text-center p-4 bg-gradient-card rounded-xl border border-border">
-                  <div className="text-3xl font-bold text-gradient">5+</div>
-                  <div className="text-sm text-muted-foreground">Years</div>
-                </div>
+                {[
+                  { value: "50+", label: "Projects" },
+                  { value: "30+", label: "Clients" },
+                  { value: "5+", label: "Years" },
+                ].map((stat, index) => (
+                  <motion.div 
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                    className="text-center p-4 glass-card"
+                  >
+                    <div className="text-3xl font-bold text-shimmer">{stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  </motion.div>
+                ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Right - Features */}
             <div className="space-y-6">
               {features.map((feature, index) => (
-                <div
+                <motion.div
                   key={feature.title}
-                  className="group p-6 bg-gradient-card rounded-xl border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
+                  initial={{ opacity: 0, x: 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.3 + index * 0.15 }}
+                  className="group p-6 glass-card glass-shine hover:border-primary/50 transition-all duration-300"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                    <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 group-hover:scale-110">
                       <feature.icon size={24} />
                     </div>
                     <div>
@@ -87,7 +116,7 @@ const AboutSection = () => {
                       <p className="text-muted-foreground">{feature.description}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>

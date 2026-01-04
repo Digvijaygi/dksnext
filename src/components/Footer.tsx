@@ -1,4 +1,5 @@
-import { Github, Linkedin, Mail, Twitter } from "lucide-react";
+import { motion } from "framer-motion";
+import { Github, Linkedin, Mail, Twitter, Heart } from "lucide-react";
 
 const socialLinks = [
   { icon: Github, href: "https://github.com", label: "GitHub" },
@@ -11,39 +12,55 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="py-8 border-t border-border">
-      <div className="container mx-auto px-4">
+    <footer className="py-12 border-t border-white/[0.08] relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-primary/10 rounded-full blur-3xl" />
+      
+      <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center justify-between gap-6"
+          >
             {/* Logo */}
-            <a
+            <motion.a
               href="#home"
-              className="text-2xl font-bold text-gradient font-mono"
+              className="text-3xl font-bold text-shimmer font-mono"
+              whileHover={{ scale: 1.05 }}
             >
               DKS
-            </a>
+            </motion.a>
 
             {/* Copyright */}
-            <p className="text-muted-foreground text-sm text-center">
-              © {currentYear} Digvijay Sahni. All rights reserved.
+            <p className="text-muted-foreground text-sm text-center flex items-center gap-2">
+              Made with <Heart className="w-4 h-4 text-red-500 animate-pulse" /> by Digvijay Sahni
+              <span className="mx-2">•</span>
+              © {currentYear} All rights reserved.
             </p>
 
             {/* Social Links */}
-            <div className="flex items-center gap-4">
-              {socialLinks.map((social) => (
-                <a
+            <div className="flex items-center gap-3">
+              {socialLinks.map((social, index) => (
+                <motion.a
                   key={social.label}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-primary transition-colors duration-300"
+                  className="w-10 h-10 glass-card flex items-center justify-center text-muted-foreground hover:text-primary transition-all duration-300"
                   aria-label={social.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.1, y: -3 }}
                 >
-                  <social.icon size={20} />
-                </a>
+                  <social.icon size={18} />
+                </motion.a>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </footer>
