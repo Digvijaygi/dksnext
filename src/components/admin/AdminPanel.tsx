@@ -265,42 +265,45 @@ export const AdminPanel = () => {
             {projectList.map((project, index) => (
               <motion.div
                 key={project.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-card/60 backdrop-blur-lg border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                initial={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, x: 0, filter: 'blur(0)' }}
+                transition={{ delay: index * 0.08, duration: 0.5 }}
+                className="glass-card glass-shine p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-border-glow"
               >
                 <div className="flex items-center gap-4">
-                  <img
-                    src={project.image}
-                    alt={project.title}
-                    className="w-16 h-16 rounded-lg object-cover bg-muted"
-                  />
+                  <div className="relative">
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="w-20 h-20 rounded-2xl object-cover bg-muted ring-2 ring-white/10"
+                    />
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground text-lg flex items-center gap-2">
                       {project.title}
                       {project.featured && (
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-gradient-primary text-primary-foreground px-3 py-1 rounded-full font-medium">
                           Featured
                         </span>
                       )}
                     </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusConfig[project.status]?.className || ''}`}>
+                    <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{project.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`text-xs px-3 py-1 rounded-full ${statusConfig[project.status]?.className || ''}`}>
                         {statusConfig[project.status]?.label || project.status}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {project.tags.slice(0, 3).join(', ')}
+                        {project.tags.slice(0, 3).join(' • ')}
                       </span>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {project.liveUrl && (
                     <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="glass-button h-10 w-10 rounded-xl">
                         <ExternalLink className="w-4 h-4" />
                       </Button>
                     </a>
@@ -308,7 +311,7 @@ export const AdminPanel = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive hover:text-destructive"
+                    className="glass-button h-10 w-10 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => handleDeleteProject(project.id)}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -320,18 +323,25 @@ export const AdminPanel = () => {
 
           {/* Instructions */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-8 p-6 bg-card/40 backdrop-blur border border-border rounded-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 glass-card glass-shine p-6"
           >
-            <h3 className="font-semibold text-foreground mb-2">✅ Full Control Enabled</h3>
+            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">✅</span>
+              Full Control Enabled
+            </h3>
             <p className="text-sm text-muted-foreground">
               Projects you add/delete here will instantly update on the main website. 
               All changes are synced in real-time across the entire portfolio.
             </p>
           </motion.div>
         </div>
+        
+        {/* Ambient glow decorations */}
+        <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-breathe pointer-events-none" />
+        <div className="fixed bottom-1/4 left-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-breathe pointer-events-none" style={{ animationDelay: '2s' }} />
       </div>
     </>
   );
