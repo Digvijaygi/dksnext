@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { useContactMessages } from "@/hooks/useContactMessages";
+import { Mail, Phone, MapPin, Send, Sparkles } from "lucide-react";
 
 const contactInfo = [
   {
@@ -28,6 +30,7 @@ const contactInfo = [
 
 const ContactSection = () => {
   const { toast } = useToast();
+  const { addMessage } = useContactMessages();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -40,8 +43,9 @@ const ContactSection = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Save message to localStorage
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    addMessage(formData);
 
     toast({
       title: "Message Sent! ✨",
@@ -62,27 +66,43 @@ const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="py-20 md:py-32 relative">
+    <section id="contact" className="py-20 md:py-32 relative overflow-hidden">
       {/* Background Glow */}
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-glow opacity-30 blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-glow opacity-30 blur-3xl animate-breathe" />
+      <div className="absolute top-1/4 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
           {/* Section Header */}
-          <div className="text-center mb-16">
-            <p className="text-primary font-mono text-sm mb-2">&lt;Contact /&gt;</p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <p className="text-primary font-mono text-sm mb-2 flex items-center justify-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              &lt;Contact /&gt;
+            </p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              Get In <span className="text-gradient">Touch</span>
+              Get In <span className="text-shimmer">Touch</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Have a project in mind? Let's work together to create something amazing.
             </p>
             <div className="w-20 h-1 bg-gradient-primary mx-auto rounded-full mt-4" />
-          </div>
+          </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Contact Info */}
-            <div className="space-y-8">
+            <motion.div 
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="space-y-8"
+            >
               <div>
                 <h3 className="text-2xl font-bold mb-4">Let's Talk</h3>
                 <p className="text-muted-foreground mb-8">
@@ -92,13 +112,17 @@ const ContactSection = () => {
               </div>
 
               <div className="space-y-4">
-                {contactInfo.map((info) => (
-                  <a
+                {contactInfo.map((info, index) => (
+                  <motion.a
                     key={info.label}
                     href={info.href}
-                    className="group flex items-center gap-4 p-4 bg-gradient-card rounded-xl border border-border hover:border-primary/50 transition-all duration-300"
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
+                    className="group flex items-center gap-4 p-4 glass-card hover:border-primary/50 transition-all duration-300"
                   >
-                    <div className="p-3 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                    <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 group-hover:scale-110">
                       <info.icon size={24} />
                     </div>
                     <div>
@@ -107,13 +131,20 @@ const ContactSection = () => {
                         {info.value}
                       </p>
                     </div>
-                  </a>
+                  </motion.a>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Contact Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <motion.form 
+              onSubmit={handleSubmit} 
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="glass-card glass-shine p-8 space-y-6"
+            >
               <div className="grid sm:grid-cols-2 gap-4">
                 <Input
                   name="name"
@@ -121,7 +152,7 @@ const ContactSection = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="bg-secondary border-border focus:border-primary"
+                  className="glass-input h-12"
                 />
                 <Input
                   name="email"
@@ -130,7 +161,7 @@ const ContactSection = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="bg-secondary border-border focus:border-primary"
+                  className="glass-input h-12"
                 />
               </div>
               <Input
@@ -139,7 +170,7 @@ const ContactSection = () => {
                 value={formData.subject}
                 onChange={handleChange}
                 required
-                className="bg-secondary border-border focus:border-primary"
+                className="glass-input h-12"
               />
               <Textarea
                 name="message"
@@ -148,25 +179,27 @@ const ContactSection = () => {
                 onChange={handleChange}
                 required
                 rows={6}
-                className="bg-secondary border-border focus:border-primary resize-none"
+                className="glass-input resize-none"
               />
               <Button
                 type="submit"
-                variant="hero"
                 size="lg"
-                className="w-full"
+                className="w-full h-14 bg-gradient-primary text-primary-foreground font-semibold text-lg rounded-xl hover:scale-[1.02] transition-transform duration-300"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  "Sending..."
+                  <span className="flex items-center gap-2">
+                    <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Sending...
+                  </span>
                 ) : (
                   <>
-                    <Send size={18} />
+                    <Send size={20} />
                     Send Message
                   </>
                 )}
               </Button>
-            </form>
+            </motion.form>
           </div>
         </div>
       </div>

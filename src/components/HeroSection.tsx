@@ -1,5 +1,6 @@
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Github, Linkedin, Mail } from "lucide-react";
+import { ArrowDown, Github, Linkedin, Mail, Code2, Zap, Sparkles } from "lucide-react";
 
 const HeroSection = () => {
   return (
@@ -8,89 +9,158 @@ const HeroSection = () => {
       className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20"
     >
       {/* Background Glow Effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-glow opacity-50 blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-glow opacity-30 blur-3xl" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-glow opacity-50 blur-3xl animate-breathe" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-glow opacity-30 blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
+      
+      {/* Floating Elements */}
+      <motion.div 
+        className="absolute top-1/3 left-[10%] w-16 h-16 glass-card flex items-center justify-center text-primary hidden lg:flex"
+        animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Code2 className="w-8 h-8" />
+      </motion.div>
+      <motion.div 
+        className="absolute top-1/2 right-[10%] w-14 h-14 glass-card flex items-center justify-center text-primary hidden lg:flex"
+        animate={{ y: [0, 15, 0], rotate: [0, -5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+      >
+        <Zap className="w-6 h-6" />
+      </motion.div>
+      <motion.div 
+        className="absolute bottom-1/3 left-[15%] w-12 h-12 glass-card flex items-center justify-center text-primary hidden lg:flex"
+        animate={{ y: [0, -15, 0], rotate: [0, 10, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+      >
+        <Sparkles className="w-5 h-5" />
+      </motion.div>
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
+          {/* Dynamic Island Style Badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, type: "spring" }}
+            className="glass-island px-6 py-2 inline-flex items-center gap-2 mb-6"
+          >
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-sm font-medium text-foreground">Available for Freelance</span>
+          </motion.div>
+
           {/* Greeting */}
-          <p className="text-primary font-mono text-sm md:text-base mb-4 animate-fade-in opacity-0">
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-primary font-mono text-sm md:text-base mb-4 flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
             &lt;Hello World /&gt;
-          </p>
+          </motion.p>
 
           {/* Name */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 animate-slide-up opacity-0 delay-100">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4"
+          >
             I'm{" "}
-            <span className="text-gradient">Digvijay Sahni</span>
-          </h1>
+            <span className="text-shimmer">Digvijay Sahni</span>
+          </motion.h1>
 
           {/* Tagline */}
-          <h2 className="text-xl md:text-2xl lg:text-3xl text-muted-foreground mb-6 animate-slide-up opacity-0 delay-200">
+          <motion.h2 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="text-xl md:text-2xl lg:text-3xl text-muted-foreground mb-6"
+          >
             Full Stack Developer & Web Designer
-          </h2>
+          </motion.h2>
 
           {/* Description */}
-          <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto mb-8 animate-slide-up opacity-0 delay-300">
+          <motion.p 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto mb-8"
+          >
             I craft beautiful, responsive websites and web applications that bring ideas to life. 
             Passionate about creating seamless user experiences with modern technologies.
-          </p>
+          </motion.p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-slide-up opacity-0 delay-400">
-            <Button variant="hero" size="xl" asChild>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
+          >
+            <Button variant="hero" size="xl" asChild className="glass-button hover:scale-105 transition-transform">
               <a href="#projects">View My Work</a>
             </Button>
-            <Button variant="heroOutline" size="xl" asChild>
+            <Button variant="heroOutline" size="xl" asChild className="glass-button hover:scale-105 transition-transform">
               <a href="#contact">Get In Touch</a>
             </Button>
-          </div>
+          </motion.div>
 
           {/* Social Links */}
-          <div className="flex justify-center gap-6 animate-fade-in opacity-0 delay-500">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors duration-300"
-              aria-label="GitHub"
-            >
-              <Github size={24} />
-            </a>
-            <a
-              href="https://linkedin.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors duration-300"
-              aria-label="LinkedIn"
-            >
-              <Linkedin size={24} />
-            </a>
-            <a
-              href="mailto:contact@dks.dev"
-              className="text-muted-foreground hover:text-primary transition-colors duration-300"
-              aria-label="Email"
-            >
-              <Mail size={24} />
-            </a>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="flex justify-center gap-4"
+          >
+            {[
+              { icon: Github, href: "https://github.com", label: "GitHub" },
+              { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
+              { icon: Mail, href: "mailto:contact@dks.dev", label: "Email" },
+            ].map((social, index) => (
+              <motion.a
+                key={social.label}
+                href={social.href}
+                target={social.label !== "Email" ? "_blank" : undefined}
+                rel={social.label !== "Email" ? "noopener noreferrer" : undefined}
+                className="w-12 h-12 glass-card flex items-center justify-center text-muted-foreground hover:text-primary hover:scale-110 transition-all duration-300"
+                aria-label={social.label}
+                whileHover={{ y: -5 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 + index * 0.1 }}
+              >
+                <social.icon size={22} />
+              </motion.a>
+            ))}
+          </motion.div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
+        <motion.div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        >
           <a
             href="#about"
-            className="text-muted-foreground hover:text-primary transition-colors duration-300"
+            className="w-10 h-16 glass-card flex items-center justify-center text-muted-foreground hover:text-primary transition-colors duration-300 rounded-full"
             aria-label="Scroll down"
           >
-            <ArrowDown size={28} />
+            <ArrowDown size={24} />
           </a>
-        </div>
+        </motion.div>
       </div>
 
       {/* Decorative Monogram */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-muted/5 font-mono hidden lg:block select-none pointer-events-none">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 1 }}
+        className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-muted/5 font-mono hidden lg:block select-none pointer-events-none"
+      >
         DKS
-      </div>
+      </motion.div>
     </section>
   );
 };
