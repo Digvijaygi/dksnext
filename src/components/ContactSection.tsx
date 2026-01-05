@@ -5,32 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useContactMessages } from "@/hooks/useContactMessages";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Mail, Phone, MapPin, Send, Sparkles } from "lucide-react";
-
-const contactInfo = [
-  {
-    icon: Mail,
-    label: "Email",
-    value: "contact@dks.dev",
-    href: "mailto:contact@dks.dev",
-  },
-  {
-    icon: Phone,
-    label: "Phone",
-    value: "+91 98765 43210",
-    href: "tel:+919876543210",
-  },
-  {
-    icon: MapPin,
-    label: "Location",
-    value: "India",
-    href: "#",
-  },
-];
 
 const ContactSection = () => {
   const { toast } = useToast();
   const { addMessage } = useContactMessages();
+  const { settings } = useSiteSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -39,11 +20,31 @@ const ContactSection = () => {
     message: "",
   });
 
+  const contactInfo = [
+    {
+      icon: Mail,
+      label: "Email",
+      value: settings.email,
+      href: `mailto:${settings.email}`,
+    },
+    {
+      icon: Phone,
+      label: "Phone",
+      value: settings.phone,
+      href: `tel:${settings.phone.replace(/\s/g, '')}`,
+    },
+    {
+      icon: MapPin,
+      label: "Location",
+      value: settings.location,
+      href: "#",
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Save message to localStorage
     await new Promise((resolve) => setTimeout(resolve, 500));
     addMessage(formData);
 
@@ -68,8 +69,8 @@ const ContactSection = () => {
   return (
     <section id="contact" className="py-20 md:py-32 relative overflow-hidden">
       {/* Background Glow */}
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-glow opacity-30 blur-3xl animate-breathe" />
-      <div className="absolute top-1/4 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 opacity-30 blur-3xl" />
+      <div className="absolute top-1/4 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
@@ -143,7 +144,7 @@ const ContactSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="glass-card glass-shine p-8 space-y-6"
+              className="glass-card p-8 space-y-6"
             >
               <div className="grid sm:grid-cols-2 gap-4">
                 <Input

@@ -1,39 +1,19 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Github, Linkedin, Mail, Code2, Zap, Sparkles } from "lucide-react";
+import { ArrowDown, Github, Linkedin, Mail, Sparkles } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const HeroSection = () => {
+  const { settings } = useSiteSettings();
+
   return (
     <section
       id="home"
       className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20"
     >
       {/* Background Glow Effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-glow opacity-50 blur-3xl animate-breathe" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-glow opacity-30 blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
-      
-      {/* Floating Elements */}
-      <motion.div 
-        className="absolute top-1/3 left-[10%] w-16 h-16 glass-card flex items-center justify-center text-primary hidden lg:flex"
-        animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Code2 className="w-8 h-8" />
-      </motion.div>
-      <motion.div 
-        className="absolute top-1/2 right-[10%] w-14 h-14 glass-card flex items-center justify-center text-primary hidden lg:flex"
-        animate={{ y: [0, 15, 0], rotate: [0, -5, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-      >
-        <Zap className="w-6 h-6" />
-      </motion.div>
-      <motion.div 
-        className="absolute bottom-1/3 left-[15%] w-12 h-12 glass-card flex items-center justify-center text-primary hidden lg:flex"
-        animate={{ y: [0, -15, 0], rotate: [0, 10, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-      >
-        <Sparkles className="w-5 h-5" />
-      </motion.div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 opacity-50 blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/10 opacity-30 blur-3xl" />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
@@ -45,7 +25,7 @@ const HeroSection = () => {
             className="glass-island px-6 py-2 inline-flex items-center gap-2 mb-6"
           >
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-sm font-medium text-foreground">Available for Freelance</span>
+            <span className="text-sm font-medium text-foreground">{settings.availabilityStatus}</span>
           </motion.div>
 
           {/* Greeting */}
@@ -67,7 +47,7 @@ const HeroSection = () => {
             className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4"
           >
             I'm{" "}
-            <span className="text-shimmer">Digvijay Sahni</span>
+            <span className="text-shimmer">{settings.heroName}</span>
           </motion.h1>
 
           {/* Tagline */}
@@ -77,7 +57,7 @@ const HeroSection = () => {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-xl md:text-2xl lg:text-3xl text-muted-foreground mb-6"
           >
-            Full Stack Developer & Web Designer
+            {settings.heroTagline}
           </motion.h2>
 
           {/* Description */}
@@ -87,8 +67,7 @@ const HeroSection = () => {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto mb-8"
           >
-            I craft beautiful, responsive websites and web applications that bring ideas to life. 
-            Passionate about creating seamless user experiences with modern technologies.
+            {settings.heroDescription}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -114,10 +93,10 @@ const HeroSection = () => {
             className="flex justify-center gap-4"
           >
             {[
-              { icon: Github, href: "https://github.com", label: "GitHub" },
-              { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-              { icon: Mail, href: "mailto:contact@dks.dev", label: "Email" },
-            ].map((social, index) => (
+              { icon: Github, href: settings.githubUrl, label: "GitHub" },
+              { icon: Linkedin, href: settings.linkedinUrl, label: "LinkedIn" },
+              { icon: Mail, href: `mailto:${settings.email}`, label: "Email" },
+            ].map((social) => (
               <motion.a
                 key={social.label}
                 href={social.href}
@@ -126,9 +105,6 @@ const HeroSection = () => {
                 className="w-12 h-12 glass-card flex items-center justify-center text-muted-foreground hover:text-primary hover:scale-110 transition-all duration-300"
                 aria-label={social.label}
                 whileHover={{ y: -5 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 + index * 0.1 }}
               >
                 <social.icon size={22} />
               </motion.a>
@@ -153,14 +129,9 @@ const HeroSection = () => {
       </div>
 
       {/* Decorative Monogram */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 1 }}
-        className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-muted/5 font-mono hidden lg:block select-none pointer-events-none"
-      >
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-muted/5 font-mono hidden lg:block select-none pointer-events-none">
         DKS
-      </motion.div>
+      </div>
     </section>
   );
 };

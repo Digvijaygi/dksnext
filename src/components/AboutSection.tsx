@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Code, Palette, Rocket, Sparkles } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const features = [
   {
@@ -20,11 +21,19 @@ const features = [
 ];
 
 const AboutSection = () => {
+  const { settings } = useSiteSettings();
+
+  const stats = [
+    { value: settings.statsProjects, label: "Projects" },
+    { value: settings.statsClients, label: "Clients" },
+    { value: settings.statsYears, label: "Years" },
+  ];
+
   return (
     <section id="about" className="py-20 md:py-32 relative overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute top-1/4 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-breathe" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-breathe" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/4 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
       
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
@@ -57,30 +66,18 @@ const AboutSection = () => {
               className="space-y-6"
             >
               <p className="text-lg text-muted-foreground leading-relaxed">
-                नमस्ते! I'm <span className="text-primary font-semibold">Digvijay Sahni</span>, 
-                a passionate Full Stack Developer based in India. With years of experience 
-                in web development, I specialize in creating modern, responsive, and 
-                user-friendly websites.
+                {settings.aboutText1}
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                I love turning complex problems into simple, beautiful solutions. 
-                Whether it's a dynamic web application, an e-commerce platform, 
-                or a stunning portfolio site – I bring creativity and technical 
-                expertise to every project.
+                {settings.aboutText2}
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                When I'm not coding, you'll find me exploring new technologies, 
-                contributing to open-source projects, or sharing knowledge with 
-                the developer community.
+                {settings.aboutText3}
               </p>
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 pt-6">
-                {[
-                  { value: "50+", label: "Projects" },
-                  { value: "30+", label: "Clients" },
-                  { value: "5+", label: "Years" },
-                ].map((stat, index) => (
+                {stats.map((stat, index) => (
                   <motion.div 
                     key={stat.label}
                     initial={{ opacity: 0, y: 20 }}
@@ -105,7 +102,7 @@ const AboutSection = () => {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: 0.3 + index * 0.15 }}
-                  className="group p-6 glass-card glass-shine hover:border-primary/50 transition-all duration-300"
+                  className="group p-6 glass-card hover:border-primary/50 transition-all duration-300"
                 >
                   <div className="flex items-start gap-4">
                     <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 group-hover:scale-110">
