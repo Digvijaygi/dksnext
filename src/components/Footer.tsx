@@ -1,15 +1,17 @@
 import { motion } from "framer-motion";
 import { Github, Linkedin, Mail, Twitter, Heart } from "lucide-react";
-
-const socialLinks = [
-  { icon: Github, href: "https://github.com", label: "GitHub" },
-  { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-  { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
-  { icon: Mail, href: "mailto:contact@dks.dev", label: "Email" },
-];
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const Footer = () => {
+  const { settings } = useSiteSettings();
   const currentYear = new Date().getFullYear();
+
+  const socialLinks = [
+    { icon: Github, href: settings.githubUrl, label: "GitHub" },
+    { icon: Linkedin, href: settings.linkedinUrl, label: "LinkedIn" },
+    { icon: Twitter, href: settings.twitterUrl, label: "Twitter" },
+    { icon: Mail, href: `mailto:${settings.email}`, label: "Email" },
+  ];
 
   return (
     <footer className="py-12 border-t border-white/[0.08] relative overflow-hidden">
@@ -35,7 +37,7 @@ const Footer = () => {
 
             {/* Copyright */}
             <p className="text-muted-foreground text-sm text-center flex items-center gap-2">
-              Made with <Heart className="w-4 h-4 text-red-500 animate-pulse" /> by Digvijay Sahni
+              Made with <Heart className="w-4 h-4 text-red-500" /> by {settings.footerName}
               <span className="mx-2">•</span>
               © {currentYear} All rights reserved.
             </p>
