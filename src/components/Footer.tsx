@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { Github, Linkedin, Mail, Twitter, Heart } from "lucide-react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 
 const Footer = () => {
-  const { settings } = useSiteSettings();
+  const { settings } = useSupabaseSiteSettings();
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [

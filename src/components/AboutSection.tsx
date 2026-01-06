@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Code, Palette, Rocket, Sparkles } from "lucide-react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 
 const features = [
   {
@@ -21,7 +21,7 @@ const features = [
 ];
 
 const AboutSection = () => {
-  const { settings } = useSiteSettings();
+  const { settings } = useSupabaseSiteSettings();
 
   const stats = [
     { value: settings.statsProjects, label: "Projects" },

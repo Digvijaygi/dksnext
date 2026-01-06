@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
 import { ProjectCategory, ProjectStatus } from "@/data/projects";
-import { useProjects } from "@/hooks/useProjects";
+import { useSupabaseProjects } from "@/hooks/useSupabaseProjects";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectFilters from "@/components/ProjectFilters";
 import { Button } from "@/components/ui/button";
 import { FolderOpen } from "lucide-react";
 
 const ProjectsSection = () => {
-  const { projects, isLoading } = useProjects();
+  const { projects, isLoading } = useSupabaseProjects();
   const [showAll, setShowAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ProjectCategory | "all">("all");
