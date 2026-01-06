@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useContactMessages } from "@/hooks/useContactMessages";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useSupabaseContactMessages } from "@/hooks/useSupabaseContactMessages";
+import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 import { Mail, Phone, MapPin, Send, Sparkles } from "lucide-react";
 
 const ContactSection = () => {
   const { toast } = useToast();
-  const { addMessage } = useContactMessages();
-  const { settings } = useSiteSettings();
+  const { addMessage } = useSupabaseContactMessages();
+  const { settings } = useSupabaseSiteSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",

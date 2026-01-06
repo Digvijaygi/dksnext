@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Github, Linkedin, Mail, Sparkles } from "lucide-react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 
 const HeroSection = () => {
-  const { settings } = useSiteSettings();
+  const { settings } = useSupabaseSiteSettings();
 
   return (
     <section

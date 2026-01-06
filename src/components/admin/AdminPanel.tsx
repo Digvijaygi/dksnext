@@ -8,8 +8,8 @@ import { ProjectForm } from './ProjectForm';
 import { MessagesPanel } from './MessagesPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { Project, statusConfig } from '@/data/projects';
-import { useProjects } from '@/hooks/useProjects';
-import { useContactMessages } from '@/hooks/useContactMessages';
+import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
+import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -35,8 +35,8 @@ export const AdminPanel = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
-  const { projects: projectList, addProject, deleteProject } = useProjects();
-  const { unreadCount } = useContactMessages();
+  const { projects: projectList, addProject, deleteProject } = useSupabaseProjects();
+  const { unreadCount } = useSupabaseContactMessages();
 
   const handleLogout = useCallback(() => {
     sessionStorage.removeItem('admin_authenticated');
@@ -107,15 +107,15 @@ export const AdminPanel = () => {
     setConfirmPassword('');
   };
 
-  const handleSaveProject = (project: Project) => {
-    addProject(project);
+  const handleSaveProject = async (project: Project) => {
+    await addProject(project);
     setShowForm(false);
-    toast.success('Project added! It will appear on the homepage instantly.');
+    toast.success('Project added! All users will see it in real-time.');
   };
 
-  const handleDeleteProject = (id: string) => {
-    deleteProject(id);
-    toast.success('Project deleted');
+  const handleDeleteProject = async (id: string) => {
+    await deleteProject(id);
+    toast.success('Project deleted from everywhere!');
   };
 
   if (!isAuthenticated) {

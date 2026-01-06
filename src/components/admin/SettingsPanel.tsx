@@ -1,30 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useSupabaseSiteSettings } from '@/hooks/useSupabaseSiteSettings';
 import { toast } from 'sonner';
 
 export const SettingsPanel = () => {
-  const { settings, updateSettings, resetSettings } = useSiteSettings();
+  const { settings, updateSettings, resetSettings, isLoading } = useSupabaseSiteSettings();
   const [formData, setFormData] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    updateSettings(formData);
+  const handleSave = async () => {
+    await updateSettings(formData);
     setHasChanges(false);
-    toast.success('Settings saved! Changes will reflect across the website.');
+    toast.success('Settings saved! All users will see updates in real-time.');
   };
 
-  const handleReset = () => {
-    resetSettings();
+  const handleReset = async () => {
+    await resetSettings();
     setFormData(settings);
     setHasChanges(false);
     toast.success('Settings reset to defaults');

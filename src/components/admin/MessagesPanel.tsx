@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, MailOpen, Trash2, Clock, User, MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useContactMessages, ContactMessage } from '@/hooks/useContactMessages';
+import { useSupabaseContactMessages, ContactMessage } from '@/hooks/useSupabaseContactMessages';
 import { formatDistanceToNow } from 'date-fns';
 
 export const MessagesPanel = () => {
-  const { messages, markAsRead, deleteMessage, unreadCount } = useContactMessages();
+  const { messages, markAsRead, deleteMessage, unreadCount } = useSupabaseContactMessages();
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
 
   const handleOpenMessage = (message: ContactMessage) => {
