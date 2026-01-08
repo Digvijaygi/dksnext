@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
-const PASSWORD_STORAGE_KEY = 'admin_password_hash';
-const DEFAULT_PASSWORD = 'dks@admin2024';
+export const PASSWORD_STORAGE_KEY = 'admin_password_hash';
+export const DEFAULT_PASSWORD = 'dks@admin2024';
 
-const simpleHash = (str: string) => {
+export const simpleHash = (str: string) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -18,7 +19,26 @@ const simpleHash = (str: string) => {
   return hash.toString(36);
 };
 
-const getStoredPasswordHash = () => {
+const getStoredPasswordHash = async (): Promise<string> => {
+  // First try to get from Supabase
+  try {
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'admin_password')
+      .maybeSingle();
+    
+    if (!error && data?.value) {
+      const passwordData = data.value as { hash: string };
+      if (passwordData.hash) {
+        return passwordData.hash;
+      }
+    }
+  } catch (e) {
+    console.log('Supabase not available, using localStorage');
+  }
+  
+  // Fallback to localStorage
   return localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash(DEFAULT_PASSWORD);
 };
 
@@ -31,12 +51,12 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      const storedHash = getStoredPasswordHash();
+    try {
+      const storedHash = await getStoredPasswordHash();
       if (simpleHash(password) === storedHash) {
         const loginTime = Date.now();
         sessionStorage.setItem('admin_authenticated', 'true');
@@ -46,8 +66,12 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
       } else {
         toast.error('Incorrect password!');
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (

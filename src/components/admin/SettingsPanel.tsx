@@ -1,13 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useSupabaseSiteSettings } from '@/hooks/useSupabaseSiteSettings';
+import { useSupabaseSiteSettings, SiteSettings } from '@/hooks/useSupabaseSiteSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { simpleHash, PASSWORD_STORAGE_KEY, DEFAULT_PASSWORD } from './AdminLogin';
 
+// Field component moved outside to prevent re-renders
+interface FieldProps {
+  label: string;
+  field: keyof SiteSettings;
+  type?: string;
+  placeholder?: string;
+  multiline?: boolean;
+  value: string;
+  onChange: (field: keyof SiteSettings, value: string) => void;
+}
+
+const Field = ({ label, field, type = 'text', placeholder, multiline = false, value, onChange }: FieldProps) => (
+  <div className="space-y-2">
+    <label className="text-sm text-muted-foreground">{label}</label>
+    {multiline ? (
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(field, e.target.value)}
+        placeholder={placeholder}
+        className="glass-input min-h-[100px]"
+      />
+    ) : (
+      <Input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(field, e.target.value)}
+        placeholder={placeholder}
+        className="glass-input"
+      />
+    )}
+  </div>
+);
+
+// Section component moved outside
+const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
+  <div className="glass-card p-6 space-y-4">
+    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+      <Icon className="w-5 h-5 text-primary" />
+      {title}
+    </h3>
+    {children}
+  </div>
+);
 export const SettingsPanel = () => {
   const { settings, updateSettings, resetSettings, isLoading } = useSupabaseSiteSettings();
   const [formData, setFormData] = useState(settings);
@@ -26,10 +70,10 @@ export const SettingsPanel = () => {
     setFormData(settings);
   }, [settings]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = useCallback((field: keyof SiteSettings, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
-  };
+  }, []);
 
   const handleSave = async () => {
     await updateSettings(formData);
@@ -63,56 +107,60 @@ export const SettingsPanel = () => {
 
     setChangingPassword(true);
     try {
-      // Check if user is authenticated with Supabase
-      const { data: { user } } = await supabase.auth.getUser();
+      // Get current stored password hash
+      let currentStoredHash = simpleHash(DEFAULT_PASSWORD);
       
-      if (user?.email) {
-        // Verify current password by signing in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: currentPassword,
-        });
-
-        if (signInError) {
-          toast.error('Current password is incorrect');
-          setChangingPassword(false);
-          return;
-        }
-
-        // Update password in Supabase
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-
-        if (updateError) {
-          toast.error(`Failed to change password: ${updateError.message}`);
-        } else {
-          toast.success('Password changed successfully!');
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
+      // Try to get from Supabase first
+      const { data } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .maybeSingle();
+      
+      if (data?.value) {
+        const passwordData = data.value as { hash: string };
+        if (passwordData.hash) {
+          currentStoredHash = passwordData.hash;
         }
       } else {
-        // Local admin password (stored in localStorage)
-        const storedHash = localStorage.getItem('adminPasswordHash');
-        const defaultHash = btoa('dks@admin2024');
-        const currentHash = btoa(currentPassword);
-        
-        if ((storedHash || defaultHash) !== currentHash) {
-          toast.error('Current password is incorrect');
-          setChangingPassword(false);
-          return;
+        // Fallback to localStorage
+        const localHash = localStorage.getItem(PASSWORD_STORAGE_KEY);
+        if (localHash) {
+          currentStoredHash = localHash;
         }
-        
-        // Update local admin password
-        const newHash = btoa(newPassword);
-        localStorage.setItem('adminPasswordHash', newHash);
-        
-        toast.success('Password changed successfully!');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
       }
+      
+      // Verify current password
+      if (simpleHash(currentPassword) !== currentStoredHash) {
+        toast.error('Current password is incorrect');
+        setChangingPassword(false);
+        return;
+      }
+      
+      // Save new password hash to Supabase
+      const newHash = simpleHash(newPassword);
+      
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert({
+          key: 'admin_password',
+          value: { hash: newHash },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+      
+      if (error) {
+        // Fallback to localStorage
+        localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
+        toast.success('Password changed (saved locally)');
+      } else {
+        // Also update localStorage for offline fallback
+        localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
+        toast.success('Password changed successfully! Works on all devices now.');
+      }
+      
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error) {
       console.error('Password change error:', error);
       toast.error('An error occurred while changing password');
@@ -120,44 +168,6 @@ export const SettingsPanel = () => {
       setChangingPassword(false);
     }
   };
-
-  const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
-    <div className="glass-card p-6 space-y-4">
-      <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <Icon className="w-5 h-5 text-primary" />
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
-
-  const Field = ({ label, field, type = 'text', placeholder, multiline = false }: { 
-    label: string; 
-    field: keyof typeof formData; 
-    type?: string;
-    placeholder?: string;
-    multiline?: boolean;
-  }) => (
-    <div className="space-y-2">
-      <label className="text-sm text-muted-foreground">{label}</label>
-      {multiline ? (
-        <Textarea
-          value={formData[field]}
-          onChange={(e) => handleChange(field, e.target.value)}
-          placeholder={placeholder}
-          className="glass-input min-h-[100px]"
-        />
-      ) : (
-        <Input
-          type={type}
-          value={formData[field]}
-          onChange={(e) => handleChange(field, e.target.value)}
-          placeholder={placeholder}
-          className="glass-input"
-        />
-      )}
-    </div>
-  );
 
   return (
     <motion.div
@@ -188,50 +198,50 @@ export const SettingsPanel = () => {
       {/* Contact Information */}
       <Section title="Contact Information" icon={Mail}>
         <div className="grid md:grid-cols-3 gap-4">
-          <Field label="Email Address" field="email" type="email" placeholder="your@email.com" />
-          <Field label="Phone Number" field="phone" placeholder="+91 XXXXX XXXXX" />
-          <Field label="Location" field="location" placeholder="City, Country" />
+          <Field label="Email Address" field="email" type="email" placeholder="your@email.com" value={formData.email} onChange={handleChange} />
+          <Field label="Phone Number" field="phone" placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={handleChange} />
+          <Field label="Location" field="location" placeholder="City, Country" value={formData.location} onChange={handleChange} />
         </div>
       </Section>
 
       {/* Hero Section */}
       <Section title="Hero Section" icon={User}>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Your Name" field="heroName" placeholder="Your Full Name" />
-          <Field label="Tagline" field="heroTagline" placeholder="Your profession/tagline" />
+          <Field label="Your Name" field="heroName" placeholder="Your Full Name" value={formData.heroName} onChange={handleChange} />
+          <Field label="Tagline" field="heroTagline" placeholder="Your profession/tagline" value={formData.heroTagline} onChange={handleChange} />
         </div>
-        <Field label="Description" field="heroDescription" multiline placeholder="Brief description about yourself..." />
-        <Field label="Availability Status" field="availabilityStatus" placeholder="e.g., Available for Freelance" />
+        <Field label="Description" field="heroDescription" multiline placeholder="Brief description about yourself..." value={formData.heroDescription} onChange={handleChange} />
+        <Field label="Availability Status" field="availabilityStatus" placeholder="e.g., Available for Freelance" value={formData.availabilityStatus} onChange={handleChange} />
       </Section>
 
       {/* Social Links */}
       <Section title="Social Links" icon={Link}>
         <div className="grid md:grid-cols-3 gap-4">
-          <Field label="GitHub URL" field="githubUrl" placeholder="https://github.com/username" />
-          <Field label="LinkedIn URL" field="linkedinUrl" placeholder="https://linkedin.com/in/username" />
-          <Field label="Twitter URL" field="twitterUrl" placeholder="https://twitter.com/username" />
+          <Field label="GitHub URL" field="githubUrl" placeholder="https://github.com/username" value={formData.githubUrl} onChange={handleChange} />
+          <Field label="LinkedIn URL" field="linkedinUrl" placeholder="https://linkedin.com/in/username" value={formData.linkedinUrl} onChange={handleChange} />
+          <Field label="Twitter URL" field="twitterUrl" placeholder="https://twitter.com/username" value={formData.twitterUrl} onChange={handleChange} />
         </div>
       </Section>
 
       {/* About Section */}
       <Section title="About Section" icon={FileText}>
-        <Field label="About Paragraph 1" field="aboutText1" multiline placeholder="First paragraph..." />
-        <Field label="About Paragraph 2" field="aboutText2" multiline placeholder="Second paragraph..." />
-        <Field label="About Paragraph 3" field="aboutText3" multiline placeholder="Third paragraph..." />
+        <Field label="About Paragraph 1" field="aboutText1" multiline placeholder="First paragraph..." value={formData.aboutText1} onChange={handleChange} />
+        <Field label="About Paragraph 2" field="aboutText2" multiline placeholder="Second paragraph..." value={formData.aboutText2} onChange={handleChange} />
+        <Field label="About Paragraph 3" field="aboutText3" multiline placeholder="Third paragraph..." value={formData.aboutText3} onChange={handleChange} />
       </Section>
 
       {/* Stats */}
       <Section title="Statistics" icon={BarChart3}>
         <div className="grid md:grid-cols-3 gap-4">
-          <Field label="Projects Count" field="statsProjects" placeholder="50+" />
-          <Field label="Clients Count" field="statsClients" placeholder="30+" />
-          <Field label="Years Experience" field="statsYears" placeholder="5+" />
+          <Field label="Projects Count" field="statsProjects" placeholder="50+" value={formData.statsProjects} onChange={handleChange} />
+          <Field label="Clients Count" field="statsClients" placeholder="30+" value={formData.statsClients} onChange={handleChange} />
+          <Field label="Years Experience" field="statsYears" placeholder="5+" value={formData.statsYears} onChange={handleChange} />
         </div>
       </Section>
 
       {/* Footer */}
       <Section title="Footer" icon={User}>
-        <Field label="Footer Name" field="footerName" placeholder="Your name in footer" />
+        <Field label="Footer Name" field="footerName" placeholder="Your name in footer" value={formData.footerName} onChange={handleChange} />
       </Section>
 
       {/* Security - Change Password */}
