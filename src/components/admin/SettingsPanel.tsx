@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseSiteSettings, SiteSettings } from '@/hooks/useSupabaseSiteSettings';
 import { toast } from 'sonner';
-
-const PASSWORD_STORAGE_KEY = 'admin_password_hash';
+import { supabase } from '@/integrations/supabase/client';
 
 // Simple hash function for password
 const simpleHash = (str: string): string => {
@@ -71,6 +70,7 @@ export const SettingsPanel = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
@@ -95,8 +95,6 @@ export const SettingsPanel = () => {
   };
 
   const handleChangePassword = async () => {
-    const DEFAULT_PASSWORD = 'admin123';
-    
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Please fill all password fields');
       return;
@@ -112,25 +110,64 @@ export const SettingsPanel = () => {
       return;
     }
 
-    // Verify current password
-    const storedHash = localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash(DEFAULT_PASSWORD);
-    const currentHash = simpleHash(currentPassword);
+    setIsChangingPassword(true);
 
-    if (currentHash !== storedHash) {
-      toast.error('Current password is incorrect');
-      return;
+    try {
+      // Get current password from database
+      const { data, error: fetchError } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching password:', fetchError);
+        toast.error('Failed to verify password. Please try again.');
+        return;
+      }
+
+      if (!data || !data.value) {
+        toast.error('No password set in database');
+        return;
+      }
+
+      const storedHash = JSON.parse(data.value as string);
+      const currentHash = simpleHash(currentPassword);
+
+      if (currentHash !== storedHash) {
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      // Save new password hash to database
+      const newHash = simpleHash(newPassword);
+      
+      const { error: updateError } = await supabase
+        .from('site_settings')
+        .upsert({
+          key: 'admin_password',
+          value: JSON.stringify(newHash),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+      if (updateError) {
+        console.error('Error updating password:', updateError);
+        toast.error('Failed to update password. Please try again.');
+        return;
+      }
+
+      // Clear fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+      toast.success('Password changed successfully! It will sync across all devices.');
+    } catch (error) {
+      console.error('Password change error:', error);
+      toast.error('Failed to change password. Please try again.');
+    } finally {
+      setIsChangingPassword(false);
     }
-
-    // Save new password hash
-    const newHash = simpleHash(newPassword);
-    localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
-    
-    // Clear fields
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    
-    toast.success('Password changed successfully!');
   };
 
   return (
@@ -242,9 +279,22 @@ export const SettingsPanel = () => {
             />
           </div>
         </div>
-        <Button onClick={handleChangePassword} className="mt-4 bg-primary text-primary-foreground">
-          <Lock className="w-4 h-4 mr-2" />
-          Update Password
+        <Button 
+          onClick={handleChangePassword} 
+          disabled={isChangingPassword}
+          className="mt-4 bg-primary text-primary-foreground"
+        >
+          {isChangingPassword ? (
+            <>
+              <span className="w-4 h-4 mr-2 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4 mr-2" />
+              Update Password
+            </>
+          )}
         </Button>
       </Section>
 
