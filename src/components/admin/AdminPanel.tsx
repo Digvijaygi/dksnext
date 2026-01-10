@@ -11,99 +11,57 @@ import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
 import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Session } from '@supabase/supabase-js';
+
+const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 
 export const AdminPanel = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings'>('projects');
   const { projects: projectList, addProject, deleteProject } = useSupabaseProjects();
   const { unreadCount } = useSupabaseContactMessages();
 
-  const checkAdminRole = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking admin role:', error);
-        return false;
+  // Check for existing session on mount
+  useEffect(() => {
+    const sessionTime = localStorage.getItem('admin_session');
+    if (sessionTime) {
+      const elapsed = Date.now() - parseInt(sessionTime);
+      if (elapsed < SESSION_TIMEOUT) {
+        setIsAuthenticated(true);
+      } else {
+        // Session expired
+        localStorage.removeItem('admin_session');
       }
-
-      return !!data;
-    } catch (error) {
-      console.error('Error checking admin role:', error);
-      return false;
     }
   }, []);
 
+  // Update session time on activity
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Check admin role after auth state change
-        if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id).then(setIsAdmin);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-        }
-      }
-    );
+    if (!isAuthenticated) return;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const adminStatus = await checkAdminRole(session.user.id);
-        setIsAdmin(adminStatus);
-      }
-      
-      setIsCheckingAuth(false);
-    });
+    const updateSession = () => {
+      localStorage.setItem('admin_session', Date.now().toString());
+    };
 
-    return () => subscription.unsubscribe();
-  }, [checkAdminRole]);
+    // Update session on user activity
+    window.addEventListener('click', updateSession);
+    window.addEventListener('keypress', updateSession);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setSession(null);
-      setIsAdmin(false);
-      toast.success('Logged out successfully');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Failed to logout');
-    }
+    return () => {
+      window.removeEventListener('click', updateSession);
+      window.removeEventListener('keypress', updateSession);
+    };
+  }, [isAuthenticated]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('admin_session');
+    setIsAuthenticated(false);
+    toast.success('Logged out successfully');
   }, []);
 
   const handleLogin = useCallback(() => {
-    // Re-check session after login
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const adminStatus = await checkAdminRole(session.user.id);
-        setIsAdmin(adminStatus);
-      }
-    });
-  }, [checkAdminRole]);
+    setIsAuthenticated(true);
+  }, []);
 
   const handleSaveProject = async (project: Project) => {
     await addProject(project);
@@ -116,20 +74,8 @@ export const AdminPanel = () => {
     toast.success('Project deleted from everywhere!');
   };
 
-  // Show loading while checking auth
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="glass-card p-8 flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <p className="text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login if not authenticated or not admin
-  if (!user || !session || !isAdmin) {
+  // Show login if not authenticated
+  if (!isAuthenticated) {
     return <AdminLogin onLogin={handleLogin} />;
   }
 
@@ -157,7 +103,7 @@ export const AdminPanel = () => {
                 <Rocket className="w-8 h-8 text-primary" />
                 Admin Panel
               </h1>
-              <p className="text-muted-foreground text-sm">{user.email}</p>
+              <p className="text-muted-foreground text-sm">Manage your portfolio</p>
             </div>
           </div>
           <div className="flex gap-3 flex-wrap">
