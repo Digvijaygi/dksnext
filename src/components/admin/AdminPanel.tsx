@@ -12,7 +12,7 @@ import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
-const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
