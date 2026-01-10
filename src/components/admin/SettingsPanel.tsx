@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseSiteSettings, SiteSettings } from '@/hooks/useSupabaseSiteSettings';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { simpleHash, PASSWORD_STORAGE_KEY, DEFAULT_PASSWORD } from './AdminLogin';
 
 // Field component moved outside to prevent re-renders
 interface FieldProps {
@@ -52,19 +50,11 @@ const Section = ({ title, icon: Icon, children }: { title: string; icon: any; ch
     {children}
   </div>
 );
+
 export const SettingsPanel = () => {
   const { settings, updateSettings, resetSettings, isLoading } = useSupabaseSiteSettings();
   const [formData, setFormData] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
@@ -86,87 +76,6 @@ export const SettingsPanel = () => {
     setFormData(settings);
     setHasChanges(false);
     toast.success('Settings reset to defaults');
-  };
-
-  const handleChangePassword = async () => {
-    // Validation
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('Please fill in all password fields');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    setChangingPassword(true);
-    try {
-      // Get current stored password hash
-      let currentStoredHash = simpleHash(DEFAULT_PASSWORD);
-      
-      // Try to get from Supabase first
-      const { data } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'admin_password')
-        .maybeSingle();
-      
-      if (data?.value) {
-        const passwordData = data.value as { hash: string };
-        if (passwordData.hash) {
-          currentStoredHash = passwordData.hash;
-        }
-      } else {
-        // Fallback to localStorage
-        const localHash = localStorage.getItem(PASSWORD_STORAGE_KEY);
-        if (localHash) {
-          currentStoredHash = localHash;
-        }
-      }
-      
-      // Verify current password
-      if (simpleHash(currentPassword) !== currentStoredHash) {
-        toast.error('Current password is incorrect');
-        setChangingPassword(false);
-        return;
-      }
-      
-      // Save new password hash to Supabase
-      const newHash = simpleHash(newPassword);
-      
-      const { error } = await supabase
-        .from('site_settings')
-        .upsert({
-          key: 'admin_password',
-          value: { hash: newHash },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
-      
-      if (error) {
-        // Fallback to localStorage
-        localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
-        toast.success('Password changed (saved locally)');
-      } else {
-        // Also update localStorage for offline fallback
-        localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
-        toast.success('Password changed successfully! Works on all devices now.');
-      }
-      
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      console.error('Password change error:', error);
-      toast.error('An error occurred while changing password');
-    } finally {
-      setChangingPassword(false);
-    }
   };
 
   return (
@@ -242,90 +151,6 @@ export const SettingsPanel = () => {
       {/* Footer */}
       <Section title="Footer" icon={User}>
         <Field label="Footer Name" field="footerName" placeholder="Your name in footer" value={formData.footerName} onChange={handleChange} />
-      </Section>
-
-      {/* Security - Change Password */}
-      <Section title="Security" icon={Lock}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">Current Password</label>
-            <div className="relative">
-              <Input
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="glass-input pr-10"
-                placeholder="Enter current password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-          
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">New Password</label>
-            <div className="relative">
-              <Input
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="glass-input pr-10"
-                placeholder="Enter new password (min 6 characters)"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-          
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">Confirm New Password</label>
-            <div className="relative">
-              <Input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="glass-input pr-10"
-                placeholder="Confirm new password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-
-          <Button
-            onClick={handleChangePassword}
-            disabled={changingPassword}
-            variant="outline"
-            className="w-full glass-button"
-          >
-            {changingPassword ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Changing Password...
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                Change Password
-              </>
-            )}
-          </Button>
-        </div>
       </Section>
 
       {/* Save reminder */}

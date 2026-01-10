@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, KeyRound, Eye, EyeOff, Mail, FolderKanban, Settings } from 'lucide-react';
+import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, Mail, FolderKanban, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { AdminLogin } from './AdminLogin';
 import { ProjectForm } from './ProjectForm';
 import { MessagesPanel } from './MessagesPanel';
@@ -12,100 +11,99 @@ import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
 import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-
-const SESSION_TIMEOUT = 15 * 60 * 1000;
-const PASSWORD_STORAGE_KEY = 'admin_password_hash';
-
-const simpleHash = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-};
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 export const AdminPanel = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings'>('projects');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPasswords, setShowPasswords] = useState(false);
   const { projects: projectList, addProject, deleteProject } = useSupabaseProjects();
   const { unreadCount } = useSupabaseContactMessages();
 
-  const handleLogout = useCallback(() => {
-    sessionStorage.removeItem('admin_authenticated');
-    sessionStorage.removeItem('admin_login_time');
-    setIsAuthenticated(false);
-    toast.success('Logged out successfully');
+  const checkAdminRole = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking admin role:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error checking admin role:', error);
+      return false;
+    }
   }, []);
 
   useEffect(() => {
-    const checkSession = () => {
-      const auth = sessionStorage.getItem('admin_authenticated');
-      const loginTime = sessionStorage.getItem('admin_login_time');
-      
-      if (auth === 'true' && loginTime) {
-        const elapsed = Date.now() - parseInt(loginTime);
-        if (elapsed > SESSION_TIMEOUT) {
-          handleLogout();
-          toast.warning('Session expired. Please login again.');
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Check admin role after auth state change
+        if (session?.user) {
+          setTimeout(() => {
+            checkAdminRole(session.user.id).then(setIsAdmin);
+          }, 0);
         } else {
-          setIsAuthenticated(true);
+          setIsAdmin(false);
         }
       }
-    };
+    );
 
-    checkSession();
-    const interval = setInterval(checkSession, 60000);
-    return () => clearInterval(interval);
-  }, [handleLogout]);
-
-  useEffect(() => {
-    const resetTimer = () => {
-      if (sessionStorage.getItem('admin_authenticated') === 'true') {
-        sessionStorage.setItem('admin_login_time', Date.now().toString());
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const adminStatus = await checkAdminRole(session.user.id);
+        setIsAdmin(adminStatus);
       }
-    };
+      
+      setIsCheckingAuth(false);
+    });
 
-    window.addEventListener('click', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    return () => {
-      window.removeEventListener('click', resetTimer);
-      window.removeEventListener('keypress', resetTimer);
-    };
+    return () => subscription.unsubscribe();
+  }, [checkAdminRole]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setIsAdmin(false);
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
   }, []);
 
-  const handlePasswordChange = () => {
-    const storedHash = localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash('dks@admin2024');
-    
-    if (simpleHash(currentPassword) !== storedHash) {
-      toast.error('Current password is incorrect');
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    
-    localStorage.setItem(PASSWORD_STORAGE_KEY, simpleHash(newPassword));
-    toast.success('Password changed successfully!');
-    setShowPasswordChange(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  };
+  const handleLogin = useCallback(() => {
+    // Re-check session after login
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const adminStatus = await checkAdminRole(session.user.id);
+        setIsAdmin(adminStatus);
+      }
+    });
+  }, [checkAdminRole]);
 
   const handleSaveProject = async (project: Project) => {
     await addProject(project);
@@ -118,8 +116,21 @@ export const AdminPanel = () => {
     toast.success('Project deleted from everywhere!');
   };
 
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="glass-card p-8 flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated or not admin
+  if (!user || !session || !isAdmin) {
+    return <AdminLogin onLogin={handleLogin} />;
   }
 
   return (
@@ -146,7 +157,7 @@ export const AdminPanel = () => {
                 <Rocket className="w-8 h-8 text-primary" />
                 Admin Panel
               </h1>
-              <p className="text-muted-foreground text-sm">Full website control</p>
+              <p className="text-muted-foreground text-sm">{user.email}</p>
             </div>
           </div>
           <div className="flex gap-3 flex-wrap">
@@ -155,9 +166,6 @@ export const AdminPanel = () => {
                 <Plus className="w-4 h-4 mr-2" /> Add Project
               </Button>
             )}
-            <Button variant="outline" onClick={() => setShowPasswordChange(true)} className="glass-button">
-              <KeyRound className="w-4 h-4 mr-2" /> Change Password
-            </Button>
             <Button variant="outline" onClick={handleLogout} className="glass-button">
               <LogOut className="w-4 h-4 mr-2" /> Logout
             </Button>
@@ -211,69 +219,6 @@ export const AdminPanel = () => {
             Website Settings
           </button>
         </motion.div>
-
-        {/* Password Change Form */}
-        <AnimatePresence>
-          {showPasswordChange && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-8"
-            >
-              <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <KeyRound className="w-5 h-5 text-primary" />
-                  Change Password
-                </h3>
-                <div className="space-y-4 max-w-md">
-                  <Input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="Current Password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="glass-input"
-                  />
-                  <Input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="New Password (min 6 characters)"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="glass-input"
-                  />
-                  <Input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="Confirm New Password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="glass-input"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords(!showPasswords)}
-                    className="text-muted-foreground hover:text-foreground transition-colors text-sm flex items-center gap-1"
-                  >
-                    {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    {showPasswords ? 'Hide' : 'Show'} passwords
-                  </button>
-                  <div className="flex gap-3">
-                    <Button onClick={handlePasswordChange} className="bg-primary text-primary-foreground">
-                      Update Password
-                    </Button>
-                    <Button variant="outline" onClick={() => {
-                      setShowPasswordChange(false);
-                      setCurrentPassword('');
-                      setNewPassword('');
-                      setConfirmPassword('');
-                    }} className="glass-button">
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Content based on active tab */}
         <AnimatePresence mode="wait">
