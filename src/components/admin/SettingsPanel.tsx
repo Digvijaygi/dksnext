@@ -1,11 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3 } from 'lucide-react';
+import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseSiteSettings, SiteSettings } from '@/hooks/useSupabaseSiteSettings';
 import { toast } from 'sonner';
+
+const PASSWORD_STORAGE_KEY = 'admin_password_hash';
+
+// Simple hash function for password
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+};
 
 // Field component moved outside to prevent re-renders
 interface FieldProps {
@@ -55,6 +68,9 @@ export const SettingsPanel = () => {
   const { settings, updateSettings, resetSettings, isLoading } = useSupabaseSiteSettings();
   const [formData, setFormData] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     setFormData(settings);
@@ -76,6 +92,45 @@ export const SettingsPanel = () => {
     setFormData(settings);
     setHasChanges(false);
     toast.success('Settings reset to defaults');
+  };
+
+  const handleChangePassword = async () => {
+    const DEFAULT_PASSWORD = 'admin123';
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Please fill all password fields');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    // Verify current password
+    const storedHash = localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash(DEFAULT_PASSWORD);
+    const currentHash = simpleHash(currentPassword);
+
+    if (currentHash !== storedHash) {
+      toast.error('Current password is incorrect');
+      return;
+    }
+
+    // Save new password hash
+    const newHash = simpleHash(newPassword);
+    localStorage.setItem(PASSWORD_STORAGE_KEY, newHash);
+    
+    // Clear fields
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    
+    toast.success('Password changed successfully!');
   };
 
   return (
@@ -151,6 +206,46 @@ export const SettingsPanel = () => {
       {/* Footer */}
       <Section title="Footer" icon={User}>
         <Field label="Footer Name" field="footerName" placeholder="Your name in footer" value={formData.footerName} onChange={handleChange} />
+      </Section>
+
+      {/* Change Password */}
+      <Section title="Change Password" icon={Lock}>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">Current Password</label>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              className="glass-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">New Password</label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
+              className="glass-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">Confirm New Password</label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              className="glass-input"
+            />
+          </div>
+        </div>
+        <Button onClick={handleChangePassword} className="mt-4 bg-primary text-primary-foreground">
+          <Lock className="w-4 h-4 mr-2" />
+          Update Password
+        </Button>
       </Section>
 
       {/* Save reminder */}

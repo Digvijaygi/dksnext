@@ -1,99 +1,59 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Shield, Mail, UserPlus, LogIn } from 'lucide-react';
+import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AdminLoginProps {
   onLogin: () => void;
 }
 
+const PASSWORD_STORAGE_KEY = 'admin_password_hash';
+const DEFAULT_PASSWORD = 'admin123';
+
+// Simple hash function for password
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+};
+
 export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error('Please enter email and password');
-      return;
-    }
-
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!password) {
+      toast.error('Please enter password');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        // Sign up flow
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`
-          }
-        });
+      // Get stored password hash or use default
+      const storedHash = localStorage.getItem(PASSWORD_STORAGE_KEY) || simpleHash(DEFAULT_PASSWORD);
+      const inputHash = simpleHash(password);
 
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast.error('This email is already registered. Please sign in.');
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-
-        if (data.user) {
-          toast.success('Account created! Please check your email to verify, then sign in.');
-          setIsSignUp(false);
-        }
+      if (inputHash === storedHash) {
+        // Store session
+        localStorage.setItem('admin_session', Date.now().toString());
+        toast.success('Welcome to Admin Panel!');
+        onLogin();
       } else {
-        // Sign in flow
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (error) {
-          if (error.message.includes('Invalid login')) {
-            toast.error('Invalid email or password');
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-
-        if (data.user) {
-          // Check if user has admin role
-          const { data: roleData, error: roleError } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', data.user.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-
-          if (roleError || !roleData) {
-            toast.error('You do not have admin access. Please contact the administrator.');
-            await supabase.auth.signOut();
-            return;
-          }
-
-          toast.success('Admin access granted!');
-          onLogin();
-        }
+        toast.error('Incorrect password');
       }
     } catch (error) {
-      console.error('Auth error:', error);
-      toast.error('Authentication failed. Please try again.');
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -119,29 +79,18 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
               Admin Panel
             </h1>
             <p className="text-muted-foreground text-sm">
-              {isSignUp ? 'Create an admin account' : 'Sign in to access website management'}
+              Enter password to access website management
             </p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className="pl-12 h-14 glass-input text-base"
-              />
-            </div>
-
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Enter admin password"
                 className="pl-12 pr-12 h-14 glass-input text-base"
               />
               <button
@@ -155,35 +104,25 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
             <Button
               type="submit"
-              disabled={isLoading || !email || !password}
+              disabled={isLoading || !password}
               className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 text-base font-semibold"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  {isSignUp ? 'Creating account...' : 'Signing in...'}
+                  Signing in...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {isSignUp ? <UserPlus className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
-                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  <Lock className="w-5 h-5" />
+                  Access Panel
                 </span>
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-          </div>
-
-          <p className="mt-4 text-xs text-muted-foreground text-center">
-            Note: New accounts require admin role assignment to access the panel.
+          <p className="mt-6 text-xs text-muted-foreground text-center">
+            Default password: admin123 (change it in settings after login)
           </p>
         </div>
       </motion.div>
