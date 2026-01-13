@@ -55,7 +55,8 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
         return;
       }
 
-      const storedHash = JSON.parse(data.value as string);
+      // Handle both string and already-parsed JSONB values
+      const storedHash = typeof data.value === 'string' ? data.value : String(data.value);
       const inputHash = simpleHash(password);
 
       if (inputHash === storedHash) {
