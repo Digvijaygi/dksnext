@@ -131,7 +131,8 @@ export const SettingsPanel = () => {
         return;
       }
 
-      const storedHash = JSON.parse(data.value as string);
+      // Handle both string and already-parsed JSONB values
+      const storedHash = typeof data.value === 'string' ? data.value : String(data.value);
       const currentHash = simpleHash(currentPassword);
 
       if (currentHash !== storedHash) {
@@ -146,7 +147,7 @@ export const SettingsPanel = () => {
         .from('site_settings')
         .upsert({
           key: 'admin_password',
-          value: JSON.stringify(newHash),
+          value: newHash,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' });
 
