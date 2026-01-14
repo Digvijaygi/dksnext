@@ -116,57 +116,87 @@ export const useSupabaseSiteSettings = () => {
   const updateSettings = useCallback(async (newSettings: SiteSettings) => {
     setSettings(newSettings);
 
-    // Update contact
-    await supabase.from('site_settings').upsert({
-      key: 'contact',
-      value: {
-        email: newSettings.email,
-        phone: newSettings.phone,
-        location: newSettings.location,
-      }
-    }, { onConflict: 'key' });
+    const updatedAt = new Date().toISOString();
 
-    // Update hero
-    await supabase.from('site_settings').upsert({
-      key: 'hero',
-      value: {
-        title: newSettings.heroName,
-        subtitle: newSettings.heroTagline,
-        description: newSettings.heroDescription,
-        availability: newSettings.availabilityStatus,
-      }
-    }, { onConflict: 'key' });
+    const results = await Promise.all([
+      // Contact
+      supabase.from('site_settings').upsert(
+        {
+          key: 'contact',
+          value: {
+            email: newSettings.email,
+            phone: newSettings.phone,
+            location: newSettings.location,
+          },
+          updated_at: updatedAt,
+        },
+        { onConflict: 'key' }
+      ),
 
-    // Update social
-    await supabase.from('site_settings').upsert({
-      key: 'social',
-      value: {
-        github: newSettings.githubUrl,
-        linkedin: newSettings.linkedinUrl,
-        twitter: newSettings.twitterUrl,
-      }
-    }, { onConflict: 'key' });
+      // Hero
+      supabase.from('site_settings').upsert(
+        {
+          key: 'hero',
+          value: {
+            title: newSettings.heroName,
+            subtitle: newSettings.heroTagline,
+            description: newSettings.heroDescription,
+            availability: newSettings.availabilityStatus,
+          },
+          updated_at: updatedAt,
+        },
+        { onConflict: 'key' }
+      ),
 
-    // Update about
-    await supabase.from('site_settings').upsert({
-      key: 'about',
-      value: {
-        text1: newSettings.aboutText1,
-        text2: newSettings.aboutText2,
-        text3: newSettings.aboutText3,
-        statsProjects: newSettings.statsProjects,
-        statsClients: newSettings.statsClients,
-        statsYears: newSettings.statsYears,
-      }
-    }, { onConflict: 'key' });
+      // Social
+      supabase.from('site_settings').upsert(
+        {
+          key: 'social',
+          value: {
+            github: newSettings.githubUrl,
+            linkedin: newSettings.linkedinUrl,
+            twitter: newSettings.twitterUrl,
+          },
+          updated_at: updatedAt,
+        },
+        { onConflict: 'key' }
+      ),
 
-    // Update footer
-    await supabase.from('site_settings').upsert({
-      key: 'footer',
-      value: {
-        name: newSettings.footerName,
-      }
-    }, { onConflict: 'key' });
+      // About
+      supabase.from('site_settings').upsert(
+        {
+          key: 'about',
+          value: {
+            text1: newSettings.aboutText1,
+            text2: newSettings.aboutText2,
+            text3: newSettings.aboutText3,
+            statsProjects: newSettings.statsProjects,
+            statsClients: newSettings.statsClients,
+            statsYears: newSettings.statsYears,
+          },
+          updated_at: updatedAt,
+        },
+        { onConflict: 'key' }
+      ),
+
+      // Footer
+      supabase.from('site_settings').upsert(
+        {
+          key: 'footer',
+          value: {
+            name: newSettings.footerName,
+          },
+          updated_at: updatedAt,
+        },
+        { onConflict: 'key' }
+      ),
+    ]);
+
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) {
+      console.error('Error updating settings:', firstError);
+      throw firstError;
+    }
   }, []);
 
   const resetSettings = useCallback(async () => {

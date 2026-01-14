@@ -28,8 +28,10 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!password) {
+
+    const trimmedPassword = password.trim();
+
+    if (!trimmedPassword) {
       toast.error('Please enter password');
       return;
     }
@@ -67,7 +69,8 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
       } else {
         storedHash = String(data.value);
       }
-      const inputHash = simpleHash(password);
+
+      const inputHash = simpleHash(trimmedPassword);
 
       if (inputHash === storedHash) {
         // Store session with timestamp
