@@ -82,30 +82,44 @@ export const SettingsPanel = () => {
   }, []);
 
   const handleSave = async () => {
-    await updateSettings(formData);
-    setHasChanges(false);
-    toast.success('Settings saved! All users will see updates in real-time.');
+    try {
+      await updateSettings(formData);
+      setHasChanges(false);
+      toast.success('Settings saved! All users will see updates in real-time.');
+    } catch (e) {
+      console.error('Settings save failed:', e);
+      toast.error('Settings save failed. Please try again.');
+    }
   };
 
   const handleReset = async () => {
-    await resetSettings();
-    setFormData(settings);
-    setHasChanges(false);
-    toast.success('Settings reset to defaults');
+    try {
+      await resetSettings();
+      setFormData(settings);
+      setHasChanges(false);
+      toast.success('Settings reset to defaults');
+    } catch (e) {
+      console.error('Settings reset failed:', e);
+      toast.error('Settings reset failed. Please try again.');
+    }
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    const trimmedCurrent = currentPassword.trim();
+    const trimmedNew = newPassword.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    if (!trimmedCurrent || !trimmedNew || !trimmedConfirm) {
       toast.error('Please fill all password fields');
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (trimmedNew.length < 6) {
       toast.error('New password must be at least 6 characters');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (trimmedNew !== trimmedConfirm) {
       toast.error('New passwords do not match');
       return;
     }
@@ -142,7 +156,8 @@ export const SettingsPanel = () => {
       } else {
         storedHash = String(data.value);
       }
-      const currentHash = simpleHash(currentPassword);
+
+      const currentHash = simpleHash(trimmedCurrent);
 
       if (currentHash !== storedHash) {
         toast.error('Current password is incorrect');
@@ -150,15 +165,18 @@ export const SettingsPanel = () => {
       }
 
       // Save new password hash to database
-      const newHash = simpleHash(newPassword);
-      
+      const newHash = simpleHash(trimmedNew);
+
       const { error: updateError } = await supabase
         .from('site_settings')
-        .upsert({
-          key: 'admin_password',
-          value: JSON.stringify(newHash),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
+        .upsert(
+          {
+            key: 'admin_password',
+            value: newHash,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'key' }
+        );
 
       if (updateError) {
         console.error('Error updating password:', updateError);
@@ -170,7 +188,7 @@ export const SettingsPanel = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      
+
       toast.success('Password changed successfully! It will sync across all devices.');
     } catch (error) {
       console.error('Password change error:', error);
