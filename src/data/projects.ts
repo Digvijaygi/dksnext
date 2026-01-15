@@ -21,6 +21,7 @@ export interface Project {
   status: ProjectStatus;
   liveUrl?: string;
   githubUrl?: string;
+  downloadUrl?: string; // ZIP file download URL
   featured?: boolean;
   completedAt?: string; // Date string "2024-01"
   client?: string;

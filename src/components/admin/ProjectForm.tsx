@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, X, Save, Image, Link, Github } from 'lucide-react';
+import { Plus, X, Save, Image, Link, Github, Upload, FileArchive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ProjectCategory, ProjectStatus, categoryLabels, statusConfig } from '@/data/projects';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectFormProps {
   onSave: (project: any) => void;
@@ -24,10 +25,15 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
     status: 'completed' as ProjectStatus,
     liveUrl: '',
     githubUrl: '',
+    downloadUrl: '',
     featured: false,
     client: '',
   });
   const [newTag, setNewTag] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingZip, setIsUploadingZip] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
@@ -38,6 +44,88 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
 
   const handleRemoveTag = (tag: string) => {
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid image (JPG, PNG, GIF, WebP)');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const fileName = `images/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { data, error } = await supabase.storage
+        .from('project-files')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('project-files')
+        .getPublicUrl(data.path);
+
+      setFormData(prev => ({ ...prev, image: urlData.publicUrl }));
+      toast.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/zip', 'application/x-zip-compressed'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid ZIP file');
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('ZIP file size must be less than 50MB');
+      return;
+    }
+
+    setIsUploadingZip(true);
+    try {
+      const fileName = `zips/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { data, error } = await supabase.storage
+        .from('project-files')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('project-files')
+        .getPublicUrl(data.path);
+
+      setFormData(prev => ({ ...prev, downloadUrl: urlData.publicUrl }));
+      toast.success('ZIP file uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload ZIP file');
+    } finally {
+      setIsUploadingZip(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -175,16 +263,90 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
         </div>
       </div>
 
+      {/* Image Upload Section */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground flex items-center gap-2">
-          <Image className="w-4 h-4" /> Image URL
+          <Image className="w-4 h-4" /> Project Image
         </label>
-        <Input
-          value={formData.image}
-          onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-          placeholder="https://... or /placeholder.svg"
-          className="bg-background/50"
-        />
+        <div className="flex gap-3 items-start">
+          <div className="flex-1 space-y-2">
+            <Input
+              value={formData.image}
+              onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+              placeholder="Image URL or upload below"
+              className="bg-background/50"
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={isUploadingImage}
+              className="w-full"
+            >
+              {isUploadingImage ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
+              ) : (
+                <><Upload className="w-4 h-4 mr-2" /> Upload Image</>
+              )}
+            </Button>
+          </div>
+          {formData.image && formData.image !== '/placeholder.svg' && (
+            <img
+              src={formData.image}
+              alt="Preview"
+              className="w-20 h-20 rounded-lg object-cover border border-border"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ZIP File Upload Section */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <FileArchive className="w-4 h-4" /> Project Files (ZIP)
+        </label>
+        <div className="space-y-2">
+          <Input
+            value={formData.downloadUrl}
+            onChange={(e) => setFormData(prev => ({ ...prev, downloadUrl: e.target.value }))}
+            placeholder="Download URL or upload ZIP file"
+            className="bg-background/50"
+          />
+          <input
+            ref={zipInputRef}
+            type="file"
+            accept=".zip,application/zip,application/x-zip-compressed"
+            onChange={handleZipUpload}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => zipInputRef.current?.click()}
+            disabled={isUploadingZip}
+            className="w-full"
+          >
+            {isUploadingZip ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading ZIP...</>
+            ) : (
+              <><FileArchive className="w-4 h-4 mr-2" /> Upload ZIP File (Max 50MB)</>
+            )}
+          </Button>
+          {formData.downloadUrl && (
+            <p className="text-xs text-muted-foreground truncate">
+              ✓ ZIP file ready: {formData.downloadUrl.split('/').pop()}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">

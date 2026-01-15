@@ -25,6 +25,7 @@ export const useSupabaseProjects = () => {
         tags: p.tags || [],
         githubUrl: p.github_url || undefined,
         liveUrl: p.live_url || undefined,
+        downloadUrl: (p as any).download_url || undefined,
         category: p.category as ProjectCategory,
         status: p.status as ProjectStatus,
         featured: p.featured,
@@ -54,7 +55,7 @@ export const useSupabaseProjects = () => {
     };
   }, [fetchProjects]);
 
-  const addProject = useCallback(async (project: Project) => {
+  const addProject = useCallback(async (project: Project & { downloadUrl?: string }) => {
     const { error } = await supabase.from('projects').insert({
       id: project.id,
       title: project.title,
@@ -63,6 +64,7 @@ export const useSupabaseProjects = () => {
       tags: project.tags,
       github_url: project.githubUrl,
       live_url: project.liveUrl,
+      download_url: project.downloadUrl,
       category: project.category,
       status: project.status,
       featured: project.featured,
