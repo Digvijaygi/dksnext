@@ -1,4 +1,4 @@
-import { ExternalLink, Github, Calendar, User } from "lucide-react";
+import { ExternalLink, Github, Calendar, User, Download } from "lucide-react";
 import { Project, categoryLabels, statusConfig } from "@/data/projects";
 import { Button } from "@/components/ui/button";
 
@@ -84,7 +84,7 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 mt-4 pt-4 border-t border-border">
+            <div className="flex gap-3 mt-4 pt-4 border-t border-border flex-wrap">
               {project.liveUrl && (
                 <Button variant="hero" size="sm" asChild>
                   <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
@@ -98,6 +98,14 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
                   <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
                     <Github size={16} />
                     Code
+                  </a>
+                </Button>
+              )}
+              {project.downloadUrl && (
+                <Button variant="heroOutline" size="sm" asChild>
+                  <a href={project.downloadUrl} download>
+                    <Download size={16} />
+                    Download
                   </a>
                 </Button>
               )}
@@ -123,7 +131,7 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Overlay Buttons */}
-        <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div className="absolute inset-0 flex items-center justify-center gap-3 flex-wrap p-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
           {project.liveUrl && (
             <Button variant="hero" size="sm" asChild>
               <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
@@ -137,6 +145,14 @@ const ProjectCard = ({ project, viewMode = "grid" }: ProjectCardProps) => {
               <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
                 <Github size={16} />
                 Code
+              </a>
+            </Button>
+          )}
+          {project.downloadUrl && (
+            <Button variant="heroOutline" size="sm" asChild>
+              <a href={project.downloadUrl} download>
+                <Download size={16} />
+                Download
               </a>
             </Button>
           )}

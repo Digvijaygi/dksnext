@@ -49,6 +49,7 @@ export type Database = {
           category: string
           created_at: string
           description: string
+          download_url: string | null
           featured: boolean
           github_url: string | null
           id: string
@@ -63,6 +64,7 @@ export type Database = {
           category?: string
           created_at?: string
           description: string
+          download_url?: string | null
           featured?: boolean
           github_url?: string | null
           id?: string
@@ -77,6 +79,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          download_url?: string | null
           featured?: boolean
           github_url?: string | null
           id?: string
