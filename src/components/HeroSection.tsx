@@ -4,7 +4,33 @@ import { ArrowDown, Github, Linkedin, Mail, Sparkles } from "lucide-react";
 import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 
 const HeroSection = () => {
-  const { settings } = useSupabaseSiteSettings();
+  const { settings, isLoading } = useSupabaseSiteSettings();
+
+  // Don't render content until data is loaded from database
+  if (isLoading) {
+    return (
+      <section
+        id="home"
+        className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20"
+      >
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Loading skeleton */}
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 w-48 bg-muted/30 rounded-full mx-auto" />
+              <div className="h-16 w-96 bg-muted/30 rounded-lg mx-auto" />
+              <div className="h-10 w-80 bg-muted/30 rounded-lg mx-auto" />
+              <div className="h-20 w-full max-w-2xl bg-muted/30 rounded-lg mx-auto" />
+              <div className="flex gap-4 justify-center">
+                <div className="h-14 w-40 bg-muted/30 rounded-lg" />
+                <div className="h-14 w-40 bg-muted/30 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
