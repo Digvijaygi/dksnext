@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, Mail, FolderKanban, Settings } from 'lucide-react';
+import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, Mail, FolderKanban, Settings, Edit2, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminLogin } from './AdminLogin';
 import { ProjectForm } from './ProjectForm';
 import { MessagesPanel } from './MessagesPanel';
 import { SettingsPanel } from './SettingsPanel';
+import { BannerPanel } from './BannerPanel';
 import { Project, statusConfig } from '@/data/projects';
 import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
 import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
@@ -17,8 +18,9 @@ const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings'>('projects');
-  const { projects: projectList, addProject, deleteProject } = useSupabaseProjects();
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings' | 'banner'>('projects');
+  const { projects: projectList, addProject, deleteProject, updateProject } = useSupabaseProjects();
   const { unreadCount } = useSupabaseContactMessages();
 
   // Check for existing session on mount
@@ -65,13 +67,29 @@ export const AdminPanel = () => {
 
   const handleSaveProject = async (project: Project) => {
     try {
-      await addProject(project);
+      if (editingProject) {
+        await updateProject(project.id, project);
+        toast.success('Project updated successfully!');
+      } else {
+        await addProject(project);
+        toast.success('Project added! All users will see it in real-time.');
+      }
       setShowForm(false);
-      toast.success('Project added! All users will see it in real-time.');
+      setEditingProject(null);
     } catch (error) {
       console.error('Failed to save project:', error);
       toast.error('Failed to save project. Please try again.');
     }
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingProject(null);
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -113,7 +131,7 @@ export const AdminPanel = () => {
           </div>
           <div className="flex gap-3 flex-wrap">
             {activeTab === 'projects' && (
-              <Button onClick={() => setShowForm(true)} className="bg-primary text-primary-foreground">
+              <Button onClick={() => { setEditingProject(null); setShowForm(true); }} className="bg-primary text-primary-foreground">
                 <Plus className="w-4 h-4 mr-2" /> Add Project
               </Button>
             )}
@@ -159,6 +177,17 @@ export const AdminPanel = () => {
             )}
           </button>
           <button
+            onClick={() => setActiveTab('banner')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
+              activeTab === 'banner'
+                ? 'bg-primary text-primary-foreground'
+                : 'glass-button text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            Banner/Offers
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
               activeTab === 'settings'
@@ -189,7 +218,11 @@ export const AdminPanel = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="mb-8"
                   >
-                    <ProjectForm onSave={handleSaveProject} onCancel={() => setShowForm(false)} />
+                    <ProjectForm 
+                      onSave={handleSaveProject} 
+                      onCancel={handleCancelForm} 
+                      editProject={editingProject}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -245,6 +278,14 @@ export const AdminPanel = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="glass-button h-10 w-10 rounded-xl text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleEditProject(project)}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="glass-button h-10 w-10 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleDeleteProject(project.id)}
                       >
@@ -266,7 +307,7 @@ export const AdminPanel = () => {
                   Full Control Enabled
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Projects you add/delete here will instantly update on the main website.
+                  Projects you add/edit/delete here will instantly update on the main website.
                 </p>
               </motion.div>
             </motion.div>
@@ -279,6 +320,16 @@ export const AdminPanel = () => {
               transition={{ duration: 0.3 }}
             >
               <MessagesPanel />
+            </motion.div>
+          ) : activeTab === 'banner' ? (
+            <motion.div
+              key="banner"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <BannerPanel />
             </motion.div>
           ) : (
             <motion.div
