@@ -86,14 +86,15 @@ export const useSupabaseProjects = () => {
     }
   }, []);
 
-  const updateProject = useCallback(async (id: string, updates: Partial<Project>) => {
+  const updateProject = useCallback(async (id: string, updates: Partial<Project> & { downloadUrl?: string }) => {
     const { error } = await supabase.from('projects').update({
       title: updates.title,
       description: updates.description,
       image: updates.image,
       tags: updates.tags,
-      github_url: updates.githubUrl,
-      live_url: updates.liveUrl,
+      github_url: updates.githubUrl || null,
+      live_url: updates.liveUrl || null,
+      download_url: updates.downloadUrl || null,
       category: updates.category,
       status: updates.status,
       featured: updates.featured,
@@ -101,8 +102,12 @@ export const useSupabaseProjects = () => {
 
     if (error) {
       console.error('Error updating project:', error);
+      throw error;
     }
-  }, []);
+    
+    // Refresh projects list after updating
+    await fetchProjects();
+  }, [fetchProjects]);
 
   const searchProjects = useCallback((query: string) => {
     const q = query.toLowerCase();

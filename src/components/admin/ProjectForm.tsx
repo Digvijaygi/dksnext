@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, X, Save, Image, Link, Github, Upload, FileArchive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,15 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ProjectCategory, ProjectStatus, categoryLabels, statusConfig } from '@/data/projects';
+import { Project, ProjectCategory, ProjectStatus, categoryLabels, statusConfig } from '@/data/projects';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectFormProps {
   onSave: (project: any) => void;
   onCancel: () => void;
+  editProject?: Project | null;
 }
 
-export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
+export const ProjectForm = ({ onSave, onCancel, editProject }: ProjectFormProps) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,6 +35,26 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
   const [isUploadingZip, setIsUploadingZip] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editProject) {
+      setFormData({
+        title: editProject.title || '',
+        description: editProject.description || '',
+        longDescription: editProject.longDescription || '',
+        image: editProject.image || '/placeholder.svg',
+        tags: editProject.tags || [],
+        category: editProject.category || 'web-app',
+        status: editProject.status || 'completed',
+        liveUrl: editProject.liveUrl || '',
+        githubUrl: editProject.githubUrl || '',
+        downloadUrl: editProject.downloadUrl || '',
+        featured: editProject.featured || false,
+        client: editProject.client || '',
+      });
+    }
+  }, [editProject]);
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
@@ -136,13 +157,12 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
     }
 
     const project = {
-      id: `project-${Date.now()}`,
+      id: editProject?.id || `project-${Date.now()}`,
       ...formData,
       completedDate: new Date().toISOString().split('T')[0],
     };
 
     onSave(project);
-    toast.success('Project added successfully!');
   };
 
   return (
@@ -153,7 +173,9 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
       className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-6 space-y-6"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">Add New Project</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          {editProject ? 'Edit Project' : 'Add New Project'}
+        </h2>
         <Button type="button" variant="ghost" size="icon" onClick={onCancel}>
           <X className="w-5 h-5" />
         </Button>
@@ -394,7 +416,7 @@ export const ProjectForm = ({ onSave, onCancel }: ProjectFormProps) => {
           Cancel
         </Button>
         <Button type="submit" className="flex-1 bg-primary text-primary-foreground">
-          <Save className="w-4 h-4 mr-2" /> Save Project
+          <Save className="w-4 h-4 mr-2" /> {editProject ? 'Update Project' : 'Save Project'}
         </Button>
       </div>
     </motion.form>
