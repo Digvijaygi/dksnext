@@ -56,24 +56,28 @@ export const useSupabaseProjects = () => {
   }, [fetchProjects]);
 
   const addProject = useCallback(async (project: Project & { downloadUrl?: string }) => {
-    const { error } = await supabase.from('projects').insert({
-      id: project.id,
+    const { data, error } = await supabase.from('projects').insert({
       title: project.title,
       description: project.description,
       image: project.image,
-      tags: project.tags,
-      github_url: project.githubUrl,
-      live_url: project.liveUrl,
-      download_url: project.downloadUrl,
-      category: project.category,
-      status: project.status,
-      featured: project.featured,
-    });
+      tags: project.tags || [],
+      github_url: project.githubUrl || null,
+      live_url: project.liveUrl || null,
+      download_url: project.downloadUrl || null,
+      category: project.category || 'web',
+      status: project.status || 'completed',
+      featured: project.featured || false,
+    }).select();
 
     if (error) {
       console.error('Error adding project:', error);
+      throw error;
     }
-  }, []);
+    
+    // Refresh projects list after adding
+    await fetchProjects();
+    return data;
+  }, [fetchProjects]);
 
   const deleteProject = useCallback(async (id: string) => {
     const { error } = await supabase.from('projects').delete().eq('id', id);

@@ -64,9 +64,14 @@ export const AdminPanel = () => {
   }, []);
 
   const handleSaveProject = async (project: Project) => {
-    await addProject(project);
-    setShowForm(false);
-    toast.success('Project added! All users will see it in real-time.');
+    try {
+      await addProject(project);
+      setShowForm(false);
+      toast.success('Project added! All users will see it in real-time.');
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      toast.error('Failed to save project. Please try again.');
+    }
   };
 
   const handleDeleteProject = async (id: string) => {
