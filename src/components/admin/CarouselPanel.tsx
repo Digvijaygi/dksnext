@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Save, Plus, Trash2, Image, Link, Type, 
-  GripVertical, Eye, EyeOff, Play, Pause, Clock
+  Play, Pause, Clock, Upload, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,7 +46,8 @@ const createEmptySlide = (): BannerSlide => ({
 export const CarouselPanel = () => {
   const [settings, setSettings] = useState<CarouselSettings>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
-  const [previewIndex, setPreviewIndex] = useState(0);
+  const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   useEffect(() => {
     fetchSettings();
@@ -126,9 +127,6 @@ export const CarouselPanel = () => {
       ...prev,
       slides: prev.slides.filter(s => s.id !== id),
     }));
-    if (previewIndex >= settings.slides.length - 1) {
-      setPreviewIndex(Math.max(0, settings.slides.length - 2));
-    }
   };
 
   const updateSlide = (id: string, field: keyof BannerSlide, value: string) => {
@@ -138,6 +136,51 @@ export const CarouselPanel = () => {
         s.id === id ? { ...s, [field]: value } : s
       ),
     }));
+  };
+
+  const handleImageUpload = async (slideId: string, file: File) => {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploadingSlideId(slideId);
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `carousel/${slideId}-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('project-files')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-files')
+        .getPublicUrl(fileName);
+
+      updateSlide(slideId, 'image', publicUrl);
+      toast.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingSlideId(null);
+    }
   };
 
   const moveSlide = (fromIndex: number, direction: 'up' | 'down') => {
@@ -251,17 +294,53 @@ export const CarouselPanel = () => {
 
                   {/* Slide Content */}
                   <div className="flex-1 space-y-3">
-                    {/* Image URL */}
-                    <div className="space-y-1">
+                    {/* Image Upload */}
+                    <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                        <Image className="w-3 h-3" /> Image URL *
+                        <Image className="w-3 h-3" /> Banner Image *
                       </label>
-                      <Input
-                        value={slide.image}
-                        onChange={(e) => updateSlide(slide.id, 'image', e.target.value)}
-                        placeholder="https://example.com/banner.jpg"
-                        className="bg-background/50"
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={(el) => fileInputRefs.current[slide.id] = el}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(slide.id, file);
+                        }}
+                        className="hidden"
                       />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRefs.current[slide.id]?.click()}
+                          disabled={uploadingSlideId === slide.id}
+                          className="flex-1"
+                        >
+                          {uploadingSlideId === slide.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              {slide.image ? 'Change Image' : 'Upload Image'}
+                            </>
+                          )}
+                        </Button>
+                        {slide.image && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => updateSlide(slide.id, 'image', '')}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
