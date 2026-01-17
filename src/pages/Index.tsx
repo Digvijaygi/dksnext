@@ -7,16 +7,16 @@ import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { CursorTrail } from "@/components/CursorTrail";
-import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { BannerCarousel } from "@/components/BannerCarousel";
 
 const Index = () => {
   return (
     <main className="min-h-screen bg-transparent relative">
-      <AnnouncementBanner />
       <GalaxyBackground />
       <CursorTrail />
       <Navbar />
       <HeroSection />
+      <BannerCarousel />
       <AboutSection />
       <ProjectsSection />
       <SkillsSection />

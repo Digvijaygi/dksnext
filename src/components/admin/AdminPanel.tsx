@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, Mail, FolderKanban, Settings, Edit2, Megaphone } from 'lucide-react';
+import { Plus, LogOut, Rocket, Trash2, ExternalLink, ArrowLeft, Mail, FolderKanban, Settings, Edit2, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminLogin } from './AdminLogin';
 import { ProjectForm } from './ProjectForm';
 import { MessagesPanel } from './MessagesPanel';
 import { SettingsPanel } from './SettingsPanel';
-import { BannerPanel } from './BannerPanel';
+import { CarouselPanel } from './CarouselPanel';
 import { Project, statusConfig } from '@/data/projects';
 import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
 import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
@@ -19,7 +19,7 @@ export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings' | 'banner'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings' | 'carousel'>('projects');
   const { projects: projectList, addProject, deleteProject, updateProject } = useSupabaseProjects();
   const { unreadCount } = useSupabaseContactMessages();
 
@@ -177,15 +177,15 @@ export const AdminPanel = () => {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('banner')}
+            onClick={() => setActiveTab('carousel')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
-              activeTab === 'banner'
+              activeTab === 'carousel'
                 ? 'bg-primary text-primary-foreground'
                 : 'glass-button text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Megaphone className="w-4 h-4" />
-            Banner/Offers
+            <Image className="w-4 h-4" />
+            Banner Carousel
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -321,15 +321,15 @@ export const AdminPanel = () => {
             >
               <MessagesPanel />
             </motion.div>
-          ) : activeTab === 'banner' ? (
+          ) : activeTab === 'carousel' ? (
             <motion.div
-              key="banner"
+              key="carousel"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <BannerPanel />
+              <CarouselPanel />
             </motion.div>
           ) : (
             <motion.div
