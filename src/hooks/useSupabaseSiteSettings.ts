@@ -12,6 +12,7 @@ export interface SiteSettings {
   githubUrl: string;
   linkedinUrl: string;
   twitterUrl: string;
+  instagramUrl: string;
   aboutText1: string;
   aboutText2: string;
   aboutText3: string;
@@ -32,6 +33,7 @@ const defaultSettings: SiteSettings = {
   githubUrl: 'https://github.com/digvijay',
   linkedinUrl: 'https://linkedin.com/in/digvijay',
   twitterUrl: 'https://twitter.com/digvijay',
+  instagramUrl: '',
   aboutText1: 'I am a passionate full-stack developer with over 5 years of experience in creating digital solutions that make a difference.',
   aboutText2: 'My expertise spans across modern web technologies, mobile development, and cloud architecture. I believe in writing clean, maintainable code.',
   aboutText3: 'When I\'m not coding, you\'ll find me exploring new technologies, contributing to open-source projects, or sharing knowledge with the developer community.',
@@ -75,6 +77,7 @@ export const useSupabaseSiteSettings = () => {
             if (value.github) newSettings.githubUrl = value.github;
             if (value.linkedin) newSettings.linkedinUrl = value.linkedin;
             if (value.twitter) newSettings.twitterUrl = value.twitter;
+            if (value.instagram) newSettings.instagramUrl = value.instagram;
             break;
           case 'about':
             if (value.text1) newSettings.aboutText1 = value.text1;
@@ -119,7 +122,6 @@ export const useSupabaseSiteSettings = () => {
     const updatedAt = new Date().toISOString();
 
     const results = await Promise.all([
-      // Contact
       supabase.from('site_settings').upsert(
         {
           key: 'contact',
@@ -132,8 +134,6 @@ export const useSupabaseSiteSettings = () => {
         },
         { onConflict: 'key' }
       ),
-
-      // Hero
       supabase.from('site_settings').upsert(
         {
           key: 'hero',
@@ -147,8 +147,6 @@ export const useSupabaseSiteSettings = () => {
         },
         { onConflict: 'key' }
       ),
-
-      // Social
       supabase.from('site_settings').upsert(
         {
           key: 'social',
@@ -156,13 +154,12 @@ export const useSupabaseSiteSettings = () => {
             github: newSettings.githubUrl,
             linkedin: newSettings.linkedinUrl,
             twitter: newSettings.twitterUrl,
+            instagram: newSettings.instagramUrl,
           },
           updated_at: updatedAt,
         },
         { onConflict: 'key' }
       ),
-
-      // About
       supabase.from('site_settings').upsert(
         {
           key: 'about',
@@ -178,8 +175,6 @@ export const useSupabaseSiteSettings = () => {
         },
         { onConflict: 'key' }
       ),
-
-      // Footer
       supabase.from('site_settings').upsert(
         {
           key: 'footer',

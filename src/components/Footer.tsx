@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Github, Linkedin, Mail, Twitter, Heart } from "lucide-react";
+import { Github, Linkedin, Mail, Twitter, Heart, Instagram } from "lucide-react";
 import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 
 const Footer = () => {
@@ -10,12 +10,12 @@ const Footer = () => {
     { icon: Github, href: settings.githubUrl, label: "GitHub" },
     { icon: Linkedin, href: settings.linkedinUrl, label: "LinkedIn" },
     { icon: Twitter, href: settings.twitterUrl, label: "Twitter" },
+    ...(settings.instagramUrl ? [{ icon: Instagram, href: settings.instagramUrl, label: "Instagram" }] : []),
     { icon: Mail, href: `mailto:${settings.email}`, label: "Email" },
   ];
 
   return (
     <footer className="py-12 border-t border-white/[0.08] relative overflow-hidden">
-      {/* Background glow */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-primary/10 rounded-full blur-3xl" />
       
       <div className="container mx-auto px-4 relative z-10">
@@ -26,7 +26,6 @@ const Footer = () => {
             viewport={{ once: true }}
             className="flex flex-col md:flex-row items-center justify-between gap-6"
           >
-            {/* Logo */}
             <motion.a
               href="#home"
               className="text-3xl font-bold text-shimmer font-mono"
@@ -35,14 +34,12 @@ const Footer = () => {
               DKS
             </motion.a>
 
-            {/* Copyright */}
             <p className="text-muted-foreground text-sm text-center flex items-center gap-2">
               Made with <Heart className="w-4 h-4 text-red-500" /> by {settings.footerName}
               <span className="mx-2">•</span>
               © {currentYear} All rights reserved.
             </p>
 
-            {/* Social Links */}
             <div className="flex items-center gap-3">
               {socialLinks.map((social, index) => (
                 <motion.a

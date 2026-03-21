@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3, Lock } from 'lucide-react';
+import { Save, RotateCcw, Mail, Phone, MapPin, User, FileText, Link, BarChart3, Lock, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,18 +8,6 @@ import { useSupabaseSiteSettings, SiteSettings } from '@/hooks/useSupabaseSiteSe
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-// Simple hash function for password
-const simpleHash = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-};
-
-// Field component moved outside to prevent re-renders
 interface FieldProps {
   label: string;
   field: keyof SiteSettings;
@@ -52,7 +40,6 @@ const Field = ({ label, field, type = 'text', placeholder, multiline = false, va
   </div>
 );
 
-// Section component moved outside
 const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
   <div className="glass-card p-6 space-y-4">
     <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -67,7 +54,6 @@ export const SettingsPanel = () => {
   const { settings, updateSettings, resetSettings, isLoading } = useSupabaseSiteSettings();
   const [formData, setFormData] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -105,11 +91,10 @@ export const SettingsPanel = () => {
   };
 
   const handleChangePassword = async () => {
-    const trimmedCurrent = currentPassword.trim();
     const trimmedNew = newPassword.trim();
     const trimmedConfirm = confirmPassword.trim();
 
-    if (!trimmedCurrent || !trimmedNew || !trimmedConfirm) {
+    if (!trimmedNew || !trimmedConfirm) {
       toast.error('Please fill all password fields');
       return;
     }
@@ -127,69 +112,16 @@ export const SettingsPanel = () => {
     setIsChangingPassword(true);
 
     try {
-      // Get current password from database
-      const { data, error: fetchError } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'admin_password')
-        .maybeSingle();
+      const { error } = await supabase.auth.updateUser({ password: trimmedNew });
 
-      if (fetchError) {
-        console.error('Error fetching password:', fetchError);
-        toast.error('Failed to verify password. Please try again.');
+      if (error) {
+        toast.error('Failed to update password: ' + error.message);
         return;
       }
 
-      if (!data || !data.value) {
-        toast.error('No password set in database');
-        return;
-      }
-
-      // Handle JSONB values - parse if it's a JSON string, otherwise convert to string
-      let storedHash: string;
-      if (typeof data.value === 'string') {
-        try {
-          storedHash = JSON.parse(data.value);
-        } catch {
-          storedHash = data.value;
-        }
-      } else {
-        storedHash = String(data.value);
-      }
-
-      const currentHash = simpleHash(trimmedCurrent);
-
-      if (currentHash !== storedHash) {
-        toast.error('Current password is incorrect');
-        return;
-      }
-
-      // Save new password hash to database
-      const newHash = simpleHash(trimmedNew);
-
-      const { error: updateError } = await supabase
-        .from('site_settings')
-        .upsert(
-          {
-            key: 'admin_password',
-            value: newHash,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'key' }
-        );
-
-      if (updateError) {
-        console.error('Error updating password:', updateError);
-        toast.error('Failed to update password. Please try again.');
-        return;
-      }
-
-      // Clear fields
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-
-      toast.success('Password changed successfully! It will sync across all devices.');
+      toast.success('Password changed successfully!');
     } catch (error) {
       console.error('Password change error:', error);
       toast.error('Failed to change password. Please try again.');
@@ -245,10 +177,11 @@ export const SettingsPanel = () => {
 
       {/* Social Links */}
       <Section title="Social Links" icon={Link}>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <Field label="GitHub URL" field="githubUrl" placeholder="https://github.com/username" value={formData.githubUrl} onChange={handleChange} />
           <Field label="LinkedIn URL" field="linkedinUrl" placeholder="https://linkedin.com/in/username" value={formData.linkedinUrl} onChange={handleChange} />
           <Field label="Twitter URL" field="twitterUrl" placeholder="https://twitter.com/username" value={formData.twitterUrl} onChange={handleChange} />
+          <Field label="Instagram URL" field="instagramUrl" placeholder="https://instagram.com/username" value={formData.instagramUrl} onChange={handleChange} />
         </div>
       </Section>
 
@@ -275,17 +208,8 @@ export const SettingsPanel = () => {
 
       {/* Change Password */}
       <Section title="Change Password" icon={Lock}>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Current Password</label>
-            <Input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              className="glass-input"
-            />
-          </div>
+        <p className="text-sm text-muted-foreground mb-2">Change your admin login password</p>
+        <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">New Password</label>
             <Input

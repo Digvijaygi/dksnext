@@ -12,51 +12,39 @@ import { useSupabaseProjects } from '@/hooks/useSupabaseProjects';
 import { useSupabaseContactMessages } from '@/hooks/useSupabaseContactMessages';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-
-const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+import { supabase } from '@/integrations/supabase/client';
 
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<'projects' | 'messages' | 'settings' | 'carousel'>('projects');
   const { projects: projectList, addProject, deleteProject, updateProject } = useSupabaseProjects();
   const { unreadCount } = useSupabaseContactMessages();
 
-  // Check for existing session on mount
+  // Check auth state on mount
   useEffect(() => {
-    const sessionTime = localStorage.getItem('admin_session');
-    if (sessionTime) {
-      const elapsed = Date.now() - parseInt(sessionTime);
-      if (elapsed < SESSION_TIMEOUT) {
-        setIsAuthenticated(true);
-      } else {
-        // Session expired
-        localStorage.removeItem('admin_session');
-      }
-    }
-  }, []);
-
-  // Update session time on activity
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const updateSession = () => {
-      localStorage.setItem('admin_session', Date.now().toString());
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      setIsCheckingAuth(false);
     };
 
-    // Update session on user activity
-    window.addEventListener('click', updateSession);
-    window.addEventListener('keypress', updateSession);
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    checkAuth();
 
     return () => {
-      window.removeEventListener('click', updateSession);
-      window.removeEventListener('keypress', updateSession);
+      subscription.unsubscribe();
     };
-  }, [isAuthenticated]);
+  }, []);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('admin_session');
+  const handleLogout = useCallback(async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
     toast.success('Logged out successfully');
   }, []);
@@ -97,6 +85,15 @@ export const AdminPanel = () => {
     toast.success('Project deleted from everywhere!');
   };
 
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // Show login if not authenticated
   if (!isAuthenticated) {
     return <AdminLogin onLogin={handleLogin} />;
@@ -104,7 +101,6 @@ export const AdminPanel = () => {
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-background">
-      {/* Ambient glow decorations */}
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="fixed bottom-1/4 left-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       
@@ -200,7 +196,7 @@ export const AdminPanel = () => {
           </button>
         </motion.div>
 
-        {/* Content based on active tab */}
+        {/* Content */}
         <AnimatePresence mode="wait">
           {activeTab === 'projects' ? (
             <motion.div
@@ -295,21 +291,6 @@ export const AdminPanel = () => {
                   </motion.div>
                 ))}
               </div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-8 glass-card p-6"
-              >
-                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">✅</span>
-                  Full Control Enabled
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Projects you add/edit/delete here will instantly update on the main website.
-                </p>
-              </motion.div>
             </motion.div>
           ) : activeTab === 'messages' ? (
             <motion.div

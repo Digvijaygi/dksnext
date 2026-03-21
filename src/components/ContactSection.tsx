@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,30 @@ import { useSupabaseContactMessages } from "@/hooks/useSupabaseContactMessages";
 import { useSupabaseSiteSettings } from "@/hooks/useSupabaseSiteSettings";
 import { Mail, Phone, MapPin, Send, Sparkles } from "lucide-react";
 
+// Input sanitization
+const sanitizeInput = (str: string): string => {
+  return str
+    .replace(/[<>]/g, '') // Remove HTML tags
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .trim()
+    .slice(0, 1000); // Max length
+};
+
+const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 255;
+};
+
+// Rate limiting: max 3 messages per 5 minutes
+const RATE_LIMIT_COUNT = 3;
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000;
+
 const ContactSection = () => {
   const { toast } = useToast();
   const { addMessage } = useSupabaseContactMessages();
   const { settings } = useSupabaseSiteSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitTimestamps = useRef<number[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,12 +60,63 @@ const ContactSection = () => {
     },
   ];
 
+  const checkRateLimit = (): boolean => {
+    const now = Date.now();
+    submitTimestamps.current = submitTimestamps.current.filter(
+      (ts) => now - ts < RATE_LIMIT_WINDOW
+    );
+    if (submitTimestamps.current.length >= RATE_LIMIT_COUNT) {
+      return false;
+    }
+    submitTimestamps.current.push(now);
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Rate limit check
+    if (!checkRateLimit()) {
+      toast({
+        title: "Too many messages",
+        description: "Please wait a few minutes before sending another message.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate & sanitize
+    const sanitized = {
+      name: sanitizeInput(formData.name),
+      email: formData.email.trim(),
+      subject: sanitizeInput(formData.subject),
+      message: sanitizeInput(formData.message),
+    };
+
+    if (!sanitized.name || sanitized.name.length < 2) {
+      toast({ title: "Error", description: "Please enter a valid name (at least 2 characters).", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(sanitized.email)) {
+      toast({ title: "Error", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    if (!sanitized.subject || sanitized.subject.length < 2) {
+      toast({ title: "Error", description: "Please enter a subject.", variant: "destructive" });
+      return;
+    }
+
+    if (!sanitized.message || sanitized.message.length < 10) {
+      toast({ title: "Error", description: "Message must be at least 10 characters.", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await addMessage(formData);
+      await addMessage(sanitized);
       toast({
         title: "Message Sent! ✨",
         description: "Thank you for reaching out. I'll get back to you soon!",
@@ -75,13 +145,11 @@ const ContactSection = () => {
 
   return (
     <section id="contact" className="py-20 md:py-32 relative overflow-hidden">
-      {/* Background Glow */}
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 opacity-30 blur-3xl" />
       <div className="absolute top-1/4 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
-          {/* Section Header */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -103,7 +171,6 @@ const ContactSection = () => {
           </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-12">
-            {/* Contact Info */}
             <motion.div 
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -144,7 +211,6 @@ const ContactSection = () => {
               </div>
             </motion.div>
 
-            {/* Contact Form */}
             <motion.form 
               onSubmit={handleSubmit} 
               initial={{ opacity: 0, x: 30 }}
@@ -160,6 +226,7 @@ const ContactSection = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
+                  maxLength={100}
                   className="glass-input h-12"
                 />
                 <Input
@@ -169,6 +236,7 @@ const ContactSection = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  maxLength={255}
                   className="glass-input h-12"
                 />
               </div>
@@ -178,6 +246,7 @@ const ContactSection = () => {
                 value={formData.subject}
                 onChange={handleChange}
                 required
+                maxLength={200}
                 className="glass-input h-12"
               />
               <Textarea
@@ -186,6 +255,7 @@ const ContactSection = () => {
                 value={formData.message}
                 onChange={handleChange}
                 required
+                maxLength={1000}
                 rows={6}
                 className="glass-input resize-none"
               />
