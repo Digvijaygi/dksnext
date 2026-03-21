@@ -8,12 +8,14 @@ import Footer from "@/components/Footer";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { CursorTrail } from "@/components/CursorTrail";
 import { BannerCarousel } from "@/components/BannerCarousel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   return (
     <main className="min-h-screen bg-transparent relative">
       <GalaxyBackground />
       <CursorTrail />
+      <ThemeToggle />
       <Navbar />
       <HeroSection />
       <BannerCarousel />

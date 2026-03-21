@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, Eye, EyeOff, Shield, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -10,18 +10,8 @@ interface AdminLoginProps {
   onLogin: () => void;
 }
 
-// Simple hash function for password
-const simpleHash = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-};
-
 export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,56 +19,30 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
-    if (!trimmedPassword) {
-      toast.error('Please enter password');
+    if (!trimmedEmail || !trimmedPassword) {
+      toast.error('Please enter email and password');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Get password hash from database
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'admin_password')
-        .maybeSingle();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password: trimmedPassword,
+      });
 
       if (error) {
-        console.error('Error fetching password:', error);
-        toast.error('Login failed. Please try again.');
+        toast.error('Invalid email or password');
         return;
       }
 
-      if (!data || !data.value) {
-        toast.error('Admin password not configured.');
-        return;
-      }
-
-      // Handle JSONB values - parse if it's a JSON string, otherwise convert to string
-      let storedHash: string;
-      if (typeof data.value === 'string') {
-        // Try to parse if it looks like a JSON string
-        try {
-          storedHash = JSON.parse(data.value);
-        } catch {
-          storedHash = data.value;
-        }
-      } else {
-        storedHash = String(data.value);
-      }
-
-      const inputHash = simpleHash(trimmedPassword);
-
-      if (inputHash === storedHash) {
-        // Store session with timestamp
-        localStorage.setItem('admin_session', Date.now().toString());
+      if (data.user) {
         toast.success('Welcome to Admin Panel!');
         onLogin();
-      } else {
-        toast.error('Incorrect password');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -90,7 +54,6 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      {/* Background glows */}
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="fixed bottom-1/4 left-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       
@@ -106,18 +69,29 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
             <p className="text-muted-foreground text-sm">
-              Enter password to access website management
+              Sign in to access website management
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Admin email"
+                className="pl-12 h-14 glass-input text-base"
+              />
+            </div>
+
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter admin password"
+                placeholder="Enter password"
                 className="pl-12 pr-12 h-14 glass-input text-base"
               />
               <button
@@ -131,7 +105,7 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
             <Button
               type="submit"
-              disabled={isLoading || !password}
+              disabled={isLoading || !email || !password}
               className="w-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 text-base font-semibold"
             >
               {isLoading ? (
@@ -142,14 +116,14 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
               ) : (
                 <span className="flex items-center gap-2">
                   <Lock className="w-5 h-5" />
-                  Access Panel
+                  Sign In
                 </span>
               )}
             </Button>
           </form>
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
-            Session expires after 10 minutes of inactivity
+            Secure authentication powered by Lovable Cloud
           </p>
         </div>
       </motion.div>
