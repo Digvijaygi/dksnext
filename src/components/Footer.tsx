@@ -31,7 +31,7 @@ const Footer = () => {
               className="text-3xl font-bold text-shimmer font-mono"
               whileHover={{ scale: 1.05 }}
             >
-              DKS
+              DKSNEXT
             </motion.a>
 
             <p className="text-muted-foreground text-sm text-center flex items-center gap-2">
