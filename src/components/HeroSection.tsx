@@ -156,7 +156,7 @@ const HeroSection = () => {
 
       {/* Decorative Monogram */}
       <div className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-muted/5 font-mono hidden lg:block select-none pointer-events-none">
-        DKS
+        DKSNEXT
       </div>
     </section>
   );
