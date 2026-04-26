@@ -68,7 +68,7 @@ const Navbar = () => {
               href="#home"
               className="text-lg font-bold text-gradient font-mono px-3 py-1.5 rounded-full hover:bg-white/5 transition-all duration-300"
             >
-              DKS
+              DKSNEXT
             </a>
 
             <div className="w-px h-5 bg-white/10 mx-1" />
@@ -134,7 +134,7 @@ const Navbar = () => {
         >
           {/* Logo */}
           <a href="#home" className="text-lg font-bold text-gradient font-mono">
-            DKS
+            DKSNEXT
           </a>
 
           {/* Menu Button */}
