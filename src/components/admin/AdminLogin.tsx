@@ -123,7 +123,7 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           </form>
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
-            Secure authentication powered by Lovable Cloud
+            Secure authentication powered by DKSNEXT
           </p>
         </div>
       </motion.div>
