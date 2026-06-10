@@ -123,7 +123,7 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           </form>
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
-            Secure authentication powered by DKSNEXT
+            Secure authentication powered by DKSNEXT.
             256-bit SSL Encrypted GDPR Compliant
           </p>
         </div>
