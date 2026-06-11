@@ -84,12 +84,12 @@ export const GalaxyBackground = () => {
       const width = canvas.width;
       const height = canvas.height;
 
-      // 3D Starfield with depth (Z-axis) - ALL STARS ARE SMALL
+      // 3D Starfield with depth (Z-axis)
       starsRef.current = [];
       const starColors = ['#ffffff', '#e0e8ff', '#ffe8e0', '#ffe0f0', '#aaccff'];
       
-      // Generate 2000 stars in 3D space (increased count for better density)
-      for (let i = 0; i < 2000; i++) {
+      // Generate 1500 stars in 3D space
+      for (let i = 0; i < 1500; i++) {
         // Spread stars in a sphere-like volume
         const radius = 800 + Math.random() * 400;
         const theta = Math.random() * Math.PI * 2;
@@ -99,11 +99,24 @@ export const GalaxyBackground = () => {
         const y = Math.sin(phi) * Math.sin(theta) * radius;
         const z = Math.cos(phi) * radius;
         
+        // Reduced size for all stars, especially the large ones
+        let starSize;
+        const randomSize = Math.random();
+        if (randomSize > 0.95) {
+          // Previously "large" stars - now made much smaller (max 1.2 instead of 2)
+          starSize = 0.8 + Math.random() * 0.4;
+        } else if (randomSize > 0.7) {
+          // Medium stars - slightly reduced
+          starSize = 0.5 + Math.random() * 0.3;
+        } else {
+          // Small stars - kept very tiny
+          starSize = 0.3 + Math.random() * 0.2;
+        }
+        
         starsRef.current.push({
           x, y, z,
-          // All stars are now tiny: size between 0.3 and 1.2 pixels
-          size: 0.3 + Math.random() * 0.9,
-          opacity: 0.15 + Math.random() * 0.4,
+          size: starSize,
+          opacity: 0.2 + Math.random() * 0.6,
           color: starColors[Math.floor(Math.random() * starColors.length)],
           twinkleSpeed: 0.3 + Math.random() * 2,
         });
@@ -227,26 +240,21 @@ export const GalaxyBackground = () => {
         const twinkle = 0.6 + Math.sin(time * star.twinkleSpeed) * 0.4;
         const opacity = star.opacity * twinkle * Math.min(1, 300 / projected.z);
         
-        // Size based on depth - even smaller for distant stars
-        let size = star.size * (300 / projected.z);
-        // Cap maximum size to keep stars small
-        size = Math.min(size, 1.5);
-        
-        // Only draw if size is visible
-        if (size < 0.2) continue;
+        // Size based on depth
+        const size = star.size * (300 / projected.z);
         
         ctx.beginPath();
-        ctx.arc(projected.x, projected.y, size, 0, Math.PI * 2);
+        ctx.arc(projected.x, projected.y, Math.max(0.3, size), 0, Math.PI * 2);
         ctx.fillStyle = star.color;
         ctx.globalAlpha = opacity;
         ctx.fill();
         
-        // Very subtle glow for slightly brighter stars (reduced intensity)
+        // Reduced glow for brighter stars (now smaller so less glow)
         if (size > 0.8) {
           ctx.beginPath();
           ctx.arc(projected.x, projected.y, size * 1.5, 0, Math.PI * 2);
           ctx.fillStyle = star.color;
-          ctx.globalAlpha = opacity * 0.15;
+          ctx.globalAlpha = opacity * 0.2;
           ctx.fill();
         }
       }
@@ -309,7 +317,7 @@ export const GalaxyBackground = () => {
       // Calculate planet position in 3D space
       const planetX = Math.cos(planet.angle) * planet.distance;
       const planetZ = Math.sin(planet.angle) * planet.distance;
-      const planetY = Math.sin(planet.angle) * planet.tiltAngle * 15;
+      const planetY = Math.sin(planet.angle) * planet.tiltAngle * 15; // Slight vertical variation
       
       const projected = project3D({ x: planetX, y: planetY, z: planetZ }, rotX, rotY, width, height);
       if (!projected) return;
