@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface Star {
   x: number;
@@ -8,10 +8,6 @@ interface Star {
   opacity: number;
   color: string;
   twinkleSpeed: number;
-  // Additional properties for original starfield
-  originalX?: number;
-  originalY?: number;
-  hasGlow?: boolean;
 }
 
 interface Planet {
@@ -24,26 +20,58 @@ interface Planet {
   glowColor: string;
   hasRing: boolean;
   ringColor?: string;
-  projX?: number;
-  projY?: number;
-  projZ?: number;
+  tiltAngle: number;
+}
+
+interface Vector3D {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export const GalaxyBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const starsRef = useRef<Star[]>([]);
   const planetsRef = useRef<Planet[]>([]);
-  const animationRef = useRef<number>(0);
-  const timeRef = useRef<number>(0);
-
-  // 3D Angles: Pitch (Up/Down Tilt), Yaw (Left/Right 360), Roll (Scroll Wheel Control)
-  const angleX = useRef<number>(0.6); // Default tilt
-  const angleY = useRef<number>(0);   // Default rotation
-  const angleZ = useRef<number>(0);   // Scroll wheel roll
+  const animationRef = useRef<number>();
+  const timeRef = useRef(0);
   
-  const targetAngleX = useRef<number>(0.6);
-  const targetAngleY = useRef<number>(0);
-  const targetAngleZ = useRef<number>(0);
+  // 3D Camera/Rotation State
+  const [targetRotX, setTargetRotX] = useState(0);
+  const [targetRotY, setTargetRotY] = useState(0);
+  const currentRotX = useRef(0);
+  const currentRotY = useRef(0);
+  const mouseX = useRef(0);
+  const mouseY = useRef(0);
+  const isInteracting = useRef(false);
+  const frameRef = useRef<number>();
+
+  // Camera distance from center
+  const cameraDistance = 800;
+
+  const project3D = useCallback((point: Vector3D, rotX: number, rotY: number, width: number, height: number): { x: number; y: number; z: number } | null => {
+    // Apply rotation around Y axis (horizontal rotation - 360°)
+    let x1 = point.x * Math.cos(rotY) - point.z * Math.sin(rotY);
+    let z1 = point.x * Math.sin(rotY) + point.z * Math.cos(rotY);
+    let y1 = point.y;
+    
+    // Apply rotation around X axis (vertical tilt - up/down)
+    let x2 = x1;
+    let y2 = y1 * Math.cos(rotX) - z1 * Math.sin(rotX);
+    let z2 = y1 * Math.sin(rotX) + z1 * Math.cos(rotX);
+    
+    // Apply camera distance (move camera back)
+    const zFinal = z2 + cameraDistance;
+    
+    // Perspective projection
+    if (zFinal <= 0.1) return null;
+    
+    const perspective = 500 / zFinal;
+    const projectedX = width / 2 + x2 * perspective;
+    const projectedY = height / 2 + y2 * perspective;
+    
+    return { x: projectedX, y: projectedY, z: zFinal };
+  }, [cameraDistance]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,341 +83,394 @@ export const GalaxyBackground = () => {
     const init = () => {
       const width = canvas.width;
       const height = canvas.height;
-      const maxDim = Math.max(width, height);
 
-      // Combined Starfield: 3D stars + Original twinkling stars
+      // 3D Starfield with depth (Z-axis) - ALL STARS ARE SMALL
       starsRef.current = [];
-      const starColors = ['#ffffff', '#e0e8ff', '#ffe8e0', '#ffe0f0'];
+      const starColors = ['#ffffff', '#e0e8ff', '#ffe8e0', '#ffe0f0', '#aaccff'];
       
-      // 1. Background 3D stars (deep space)
-      for (let i = 0; i < 300; i++) {
+      // Generate 2000 stars in 3D space (increased count for better density)
+      for (let i = 0; i < 2000; i++) {
+        // Spread stars in a sphere-like volume
+        const radius = 800 + Math.random() * 400;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        
+        const x = Math.sin(phi) * Math.cos(theta) * radius;
+        const y = Math.sin(phi) * Math.sin(theta) * radius;
+        const z = Math.cos(phi) * radius;
+        
         starsRef.current.push({
-          x: (Math.random() - 0.5) * maxDim * 3,
-          y: (Math.random() - 0.5) * maxDim * 3,
-          z: (Math.random() - 0.5) * maxDim * 3,
-          size: 0.3 + Math.random() * 0.8,
-          opacity: 0.2 + Math.random() * 0.4,
+          x, y, z,
+          // All stars are now tiny: size between 0.3 and 1.2 pixels
+          size: 0.3 + Math.random() * 0.9,
+          opacity: 0.15 + Math.random() * 0.4,
           color: starColors[Math.floor(Math.random() * starColors.length)],
-          twinkleSpeed: 0.5 + Math.random() * 2,
-          hasGlow: false,
-        });
-      }
-      
-      // 2. Original twinkling stars (static on screen space)
-      for (let i = 0; i < 400; i++) {
-        starsRef.current.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          z: 0,
-          size: 0.5 + Math.random() * 1.5,
-          opacity: 0.3 + Math.random() * 0.5,
-          color: starColors[Math.floor(Math.random() * starColors.length)],
-          twinkleSpeed: 0.5 + Math.random() * 2,
-          originalX: Math.random() * width,
-          originalY: Math.random() * height,
-          hasGlow: Math.random() > 0.8,
-        });
-      }
-      
-      // 3. Bright twinkling stars (larger, more prominent)
-      for (let i = 0; i < 100; i++) {
-        starsRef.current.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          z: 0,
-          size: 1.5 + Math.random() * 2,
-          opacity: 0.5 + Math.random() * 0.4,
-          color: '#ffffff',
-          twinkleSpeed: 0.3 + Math.random() * 1,
-          originalX: Math.random() * width,
-          originalY: Math.random() * height,
-          hasGlow: true,
+          twinkleSpeed: 0.3 + Math.random() * 2,
         });
       }
 
-      // Planets Matrix - Proportions scaled for realistic 3D depth pop
-      const baseDistance = Math.min(width, height) * 0.07;
+      // Planets in 3D space - all on the same plane (Y=0) for solar system
+      const baseDistance = 120;
       planetsRef.current = [
-        { name: 'Mercury', radius: 3, distance: baseDistance * 1.2, angle: 0, speed: 0.035, color: '#b0a89c', glowColor: '#b0a89c25', hasRing: false },
-        { name: 'Venus', radius: 4.5, distance: baseDistance * 1.8, angle: 0.8, speed: 0.025, color: '#e6b856', glowColor: '#e6b85625', hasRing: false },
-        { name: 'Earth', radius: 5, distance: baseDistance * 2.5, angle: 1.6, speed: 0.018, color: '#4a90d9', glowColor: '#4a90d925', hasRing: false },
-        { name: 'Mars', radius: 4, distance: baseDistance * 3.2, angle: 2.4, speed: 0.014, color: '#e0764a', glowColor: '#e0764a25', hasRing: false },
-        { name: 'Jupiter', radius: 11, distance: baseDistance * 4.2, angle: 3.2, speed: 0.009, color: '#d8a27a', glowColor: '#d8a27a25', hasRing: false },
-        { name: 'Saturn', radius: 9, distance: baseDistance * 5.4, angle: 4.0, speed: 0.007, color: '#f2cd9b', glowColor: '#f2cd9b25', hasRing: true, ringColor: 'rgba(210, 180, 140, 0.45)' },
-        { name: 'Uranus', radius: 7, distance: baseDistance * 6.5, angle: 4.8, speed: 0.005, color: '#b0e0e6', glowColor: '#b0e0e625', hasRing: false },
-        { name: 'Neptune', radius: 6.8, distance: baseDistance * 7.5, angle: 5.6, speed: 0.004, color: '#4169e1', glowColor: '#4169e125', hasRing: false },
+        { 
+          name: 'Mercury', 
+          radius: 8, 
+          distance: baseDistance * 1.2, 
+          angle: 0, 
+          speed: 0.008, 
+          color: '#b0a89c', 
+          glowColor: '#b0a89c40', 
+          hasRing: false,
+          tiltAngle: 0.1
+        },
+        { 
+          name: 'Venus', 
+          radius: 10, 
+          distance: baseDistance * 1.7, 
+          angle: 0.8, 
+          speed: 0.0055, 
+          color: '#e6b856', 
+          glowColor: '#e6b85640', 
+          hasRing: false,
+          tiltAngle: 0.2
+        },
+        { 
+          name: 'Earth', 
+          radius: 11, 
+          distance: baseDistance * 2.3, 
+          angle: 1.6, 
+          speed: 0.0045, 
+          color: '#4a90d9', 
+          glowColor: '#4a90d940', 
+          hasRing: false,
+          tiltAngle: 0.3
+        },
+        { 
+          name: 'Mars', 
+          radius: 9, 
+          distance: baseDistance * 2.9, 
+          angle: 2.4, 
+          speed: 0.0038, 
+          color: '#e0764a', 
+          glowColor: '#e0764a40', 
+          hasRing: false,
+          tiltAngle: 0.15
+        },
+        { 
+          name: 'Jupiter', 
+          radius: 22, 
+          distance: baseDistance * 4.0, 
+          angle: 3.2, 
+          speed: 0.0025, 
+          color: '#d8a27a', 
+          glowColor: '#d8a27a50', 
+          hasRing: false,
+          tiltAngle: 0.1
+        },
+        { 
+          name: 'Saturn', 
+          radius: 19, 
+          distance: baseDistance * 5.0, 
+          angle: 4.0, 
+          speed: 0.002, 
+          color: '#f2cd9b', 
+          glowColor: '#f2cd9b50', 
+          hasRing: true,
+          ringColor: 'rgba(210, 180, 140, 0.8)',
+          tiltAngle: 0.4
+        },
+        { 
+          name: 'Uranus', 
+          radius: 15, 
+          distance: baseDistance * 6.2, 
+          angle: 4.8, 
+          speed: 0.0015, 
+          color: '#b0e0e6', 
+          glowColor: '#b0e0e640', 
+          hasRing: false,
+          tiltAngle: 0.5
+        },
+        { 
+          name: 'Neptune', 
+          radius: 14, 
+          distance: baseDistance * 7.3, 
+          angle: 5.6, 
+          speed: 0.0012, 
+          color: '#4169e1', 
+          glowColor: '#4169e140', 
+          hasRing: false,
+          tiltAngle: 0.3
+        },
       ];
     };
 
-    // Advanced 3D Perspective Projection Engine (True Depth Simulation)
-    const project3D = (x: number, y: number, z: number) => {
-      // 1. Rotate around Y-axis (Yaw / Left-Right mouse movement)
-      let cosY = Math.cos(angleY.current);
-      let sinY = Math.sin(angleY.current);
-      let x1 = x * cosY - z * sinY;
-      let z1 = x * sinY + z * cosY;
-
-      // 2. Rotate around X-axis (Pitch / Up-Down mouse tilt)
-      let cosX = Math.cos(angleX.current);
-      let sinX = Math.sin(angleX.current);
-      let y2 = y * cosX - z1 * sinX;
-      let z2 = y * sinX + z1 * cosX;
-
-      // 3. Rotate around Z-axis (Roll / Scroll Wheel)
-      let cosZ = Math.cos(angleZ.current);
-      let sinZ = Math.sin(angleZ.current);
-      let x3 = x1 * cosZ - y2 * sinZ;
-      let y3 = x1 * sinZ + y2 * cosZ;
-
-      // Perspective Focal Length Calculation
-      const fov = Math.max(canvas.width, canvas.height) * 0.8; 
-      const cameraDistance = fov; // Camera position offset
+    const drawStars3D = (ctx: CanvasRenderingContext2D, rotX: number, rotY: number, width: number, height: number, time: number) => {
+      // Sort stars by depth (Z) for proper rendering
+      const starsWithDepth = starsRef.current.map(star => {
+        const projected = project3D(
+          { x: star.x, y: star.y, z: star.z },
+          rotX,
+          rotY,
+          width,
+          height
+        );
+        return { star, projected, depth: projected?.z || 9999 };
+      });
       
-      // Perspective Scale Factor
-      const scale = fov / (fov + z2); 
-
-      return {
-        x: canvas.width / 2 + x3 * scale,
-        y: canvas.height / 2 + y3 * scale,
-        z: z2, // Sent for depth layering (Z-buffering)
-        scale: scale
-      };
-    };
-
-    const drawStars = (time: number) => {
-      for (const star of starsRef.current) {
-        let x, y, scale = 1;
+      // Sort by depth (farthest first)
+      starsWithDepth.sort((a, b) => b.depth - a.depth);
+      
+      for (const { star, projected } of starsWithDepth) {
+        if (!projected) continue;
         
-        // Handle 3D stars (with z coordinate)
-        if (star.z !== 0 || star.originalX === undefined) {
-          const pt = project3D(star.x, star.y, star.z);
-          x = pt.x;
-          y = pt.y;
-          scale = pt.scale;
-        } else {
-          // Original stars remain in screen space
-          x = star.x;
-          y = star.y;
-          // Slight parallax effect for original stars (subtle)
-          x += angleY.current * 15;
-          y += angleX.current * 10;
-          
-          // Wrap around edges
-          if (x < -50) x = canvas.width + 50;
-          if (x > canvas.width + 50) x = -50;
-          if (y < -50) y = canvas.height + 50;
-          if (y > canvas.height + 50) y = -50;
-        }
-        
-        // Twinkling effect
+        // Star twinkling effect
         const twinkle = 0.6 + Math.sin(time * star.twinkleSpeed) * 0.4;
-        const opacity = Math.min(1, star.opacity * twinkle);
+        const opacity = star.opacity * twinkle * Math.min(1, 300 / projected.z);
         
-        // Draw star
-        const finalSize = Math.max(0.3, star.size * (scale > 0 ? scale : 1));
+        // Size based on depth - even smaller for distant stars
+        let size = star.size * (300 / projected.z);
+        // Cap maximum size to keep stars small
+        size = Math.min(size, 1.5);
+        
+        // Only draw if size is visible
+        if (size < 0.2) continue;
+        
         ctx.beginPath();
-        ctx.arc(x, y, finalSize, 0, Math.PI * 2);
+        ctx.arc(projected.x, projected.y, size, 0, Math.PI * 2);
         ctx.fillStyle = star.color;
         ctx.globalAlpha = opacity;
         ctx.fill();
         
-        // Draw glow for brighter stars
-        if (star.hasGlow || star.size > 1.5) {
+        // Very subtle glow for slightly brighter stars (reduced intensity)
+        if (size > 0.8) {
           ctx.beginPath();
-          ctx.arc(x, y, finalSize * 2.5, 0, Math.PI * 2);
+          ctx.arc(projected.x, projected.y, size * 1.5, 0, Math.PI * 2);
           ctx.fillStyle = star.color;
-          ctx.globalAlpha = opacity * 0.25;
+          ctx.globalAlpha = opacity * 0.15;
           ctx.fill();
-        }
-        
-        // Cross-shaped sparkle for very bright stars
-        if (star.size > 2 && twinkle > 0.8) {
-          ctx.globalAlpha = opacity * 0.6;
-          ctx.beginPath();
-          ctx.moveTo(x - finalSize * 2, y);
-          ctx.lineTo(x + finalSize * 2, y);
-          ctx.moveTo(x, y - finalSize * 2);
-          ctx.lineTo(x, y + finalSize * 2);
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
     };
 
-    const drawSun = (x: number, y: number, radius: number, scale: number) => {
-      const finalRadius = radius * scale;
-      const glowRadius = finalRadius * 4;
-
-      const glowGrad = ctx.createRadialGradient(x, y, finalRadius, x, y, glowRadius);
-      glowGrad.addColorStop(0, `rgba(255, 215, 130, 0.6)`);
-      glowGrad.addColorStop(0.2, `rgba(255, 130, 30, 0.25)`);
-      glowGrad.addColorStop(0.6, `rgba(255, 60, 0, 0.05)`);
-      glowGrad.addColorStop(1, 'transparent');
+    const drawSun3D = (ctx: CanvasRenderingContext2D, rotX: number, rotY: number, width: number, height: number, time: number) => {
+      const sunPos = project3D({ x: 0, y: 0, z: 0 }, rotX, rotY, width, height);
+      if (!sunPos) return;
       
+      const radius = 35;
+      const depthScale = Math.min(1, 500 / sunPos.z);
+      const finalRadius = radius * depthScale;
+      
+      // Sun glow
+      const glowRadius = finalRadius * 3;
+      const glowGrad = ctx.createRadialGradient(sunPos.x, sunPos.y, finalRadius, sunPos.x, sunPos.y, glowRadius);
+      glowGrad.addColorStop(0, `rgba(255, 200, 100, 0.4)`);
+      glowGrad.addColorStop(0.3, `rgba(255, 150, 50, 0.15)`);
+      glowGrad.addColorStop(0.6, `rgba(255, 100, 0, 0.05)`);
+      glowGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
-      ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
+      ctx.arc(sunPos.x, sunPos.y, glowRadius, 0, Math.PI * 2);
       ctx.fill();
       
-      const sunGrad = ctx.createRadialGradient(x - finalRadius * 0.2, y - finalRadius * 0.2, 0, x, y, finalRadius);
-      sunGrad.addColorStop(0, '#fffdf0');
-      sunGrad.addColorStop(0.2, '#ffdf85');
-      sunGrad.addColorStop(0.6, '#ff7700');
-      sunGrad.addColorStop(1, '#b32400');
-      
+      // Sun body
+      const sunGrad = ctx.createRadialGradient(sunPos.x - 5, sunPos.y - 5, 0, sunPos.x, sunPos.y, finalRadius);
+      sunGrad.addColorStop(0, '#fff8e7');
+      sunGrad.addColorStop(0.3, '#ffe4a0');
+      sunGrad.addColorStop(0.6, '#ffcc66');
+      sunGrad.addColorStop(0.9, '#ff9933');
+      sunGrad.addColorStop(1, '#ff6600');
       ctx.fillStyle = sunGrad;
       ctx.beginPath();
-      ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
+      ctx.arc(sunPos.x, sunPos.y, finalRadius, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Sun spots
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = '#cc6600';
+      ctx.beginPath();
+      ctx.ellipse(sunPos.x - finalRadius * 0.2, sunPos.y - finalRadius * 0.15, finalRadius * 0.15, finalRadius * 0.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(sunPos.x + finalRadius * 0.25, sunPos.y + finalRadius * 0.1, finalRadius * 0.12, finalRadius * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     };
 
-    const drawPlanet = (p: Planet, scale: number) => {
-      const x = p.projX!;
-      const y = p.projY!;
-      const finalRadius = Math.max(0.8, p.radius * scale);
-
-      // Render Atmosphere Glow
-      ctx.fillStyle = p.glowColor;
+    const drawPlanet3D = (
+      ctx: CanvasRenderingContext2D,
+      planet: Planet,
+      rotX: number,
+      rotY: number,
+      width: number,
+      height: number,
+      time: number
+    ) => {
+      // Calculate planet position in 3D space
+      const planetX = Math.cos(planet.angle) * planet.distance;
+      const planetZ = Math.sin(planet.angle) * planet.distance;
+      const planetY = Math.sin(planet.angle) * planet.tiltAngle * 15;
+      
+      const projected = project3D({ x: planetX, y: planetY, z: planetZ }, rotX, rotY, width, height);
+      if (!projected) return;
+      
+      const depthScale = Math.min(1, 500 / projected.z);
+      const finalRadius = planet.radius * depthScale;
+      
+      // Planet glow
+      ctx.fillStyle = planet.glowColor;
       ctx.beginPath();
-      ctx.arc(x, y, finalRadius * 1.8, 0, Math.PI * 2);
+      ctx.arc(projected.x, projected.y, finalRadius * 1.5, 0, Math.PI * 2);
       ctx.fill();
       
-      // Dynamic Shading matching 3D Sunlight vectors
-      const planetGrad = ctx.createRadialGradient(x - finalRadius * 0.25, y - finalRadius * 0.25, 0, x, y, finalRadius);
-      planetGrad.addColorStop(0, p.color);
-      planetGrad.addColorStop(0.7, p.color);
-      planetGrad.addColorStop(1, '#020208'); 
-      
+      // Planet body with 3D shading
+      const planetGrad = ctx.createRadialGradient(
+        projected.x - finalRadius * 0.3, 
+        projected.y - finalRadius * 0.3, 
+        0, 
+        projected.x, 
+        projected.y, 
+        finalRadius
+      );
+      planetGrad.addColorStop(0, planet.color);
+      planetGrad.addColorStop(0.7, planet.color);
+      planetGrad.addColorStop(1, '#1a1a2e');
       ctx.fillStyle = planetGrad;
       ctx.beginPath();
-      ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
+      ctx.arc(projected.x, projected.y, finalRadius, 0, Math.PI * 2);
       ctx.fill();
       
-      // 3D Saturn Rings Transformation
-      if (p.hasRing) {
-        ctx.save();
-        ctx.translate(x, y);
-        // Sync ring tilt with overall Pitch (angleX) & Roll (angleZ)
-        ctx.rotate(angleZ.current);
-        ctx.scale(1, Math.abs(Math.sin(angleX.current)) * 0.6 + 0.08); 
-        
-        ctx.strokeStyle = p.ringColor || 'rgba(210, 180, 140, 0.5)';
-        ctx.lineWidth = finalRadius * 0.5;
+      // Planet-specific details
+      if (planet.name === 'Jupiter') {
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#b87333';
+        for (let i = -1; i <= 1; i++) {
+          ctx.fillRect(projected.x - finalRadius, projected.y + i * finalRadius * 0.4, finalRadius * 2, finalRadius * 0.15);
+        }
+        ctx.fillStyle = '#cc5544';
         ctx.beginPath();
-        ctx.arc(0, 0, finalRadius * 1.7, 0, Math.PI * 2);
+        ctx.ellipse(projected.x + finalRadius * 0.3, projected.y + finalRadius * 0.2, finalRadius * 0.25, finalRadius * 0.15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (planet.name === 'Saturn' && planet.hasRing) {
+        // 3D Rings for Saturn
+        ctx.save();
+        ctx.translate(projected.x, projected.y);
+        const ringTilt = 0.6;
+        ctx.rotate(ringTilt);
+        
+        ctx.strokeStyle = planet.ringColor || 'rgba(210, 180, 140, 0.7)';
+        ctx.lineWidth = finalRadius * 0.35;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, finalRadius * 1.4, finalRadius * 0.4, 0, 0, Math.PI * 2);
         ctx.stroke();
+        
+        ctx.strokeStyle = 'rgba(200, 170, 130, 0.4)';
+        ctx.lineWidth = finalRadius * 0.25;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, finalRadius * 1.7, finalRadius * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
         ctx.restore();
       }
-    };
-
-    const draw3DOrbitPaths = () => {
-      ctx.lineWidth = 0.8;
       
-      for (const planet of planetsRef.current) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.beginPath();
-        
-        // Dynamic path rendering in 3D loop
-        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.05) {
-          const ox = Math.cos(a) * planet.distance;
-          const oz = Math.sin(a) * planet.distance;
-          const pt = project3D(ox, 0, oz);
-          
-          if (a === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
-        }
-        ctx.stroke();
-      }
+      // Highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.beginPath();
+      ctx.arc(projected.x - finalRadius * 0.25, projected.y - finalRadius * 0.25, finalRadius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
     };
 
-    // ─── CONTROL LOGICS (BINA CLICK KIYE INTERACTION) ───
+    // Smooth mouse/touch interaction without click
+    const handleMouseMove = useCallback((e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      
+      mouseX.current = (clientX / window.innerWidth) * 2 - 1;
+      mouseY.current = (clientY / window.innerHeight) * 2 - 1;
+      
+      // Target rotation based on mouse position
+      setTargetRotY(mouseX.current * Math.PI * 1.5); // 270° rotation left/right
+      setTargetRotX(mouseY.current * Math.PI * 0.5); // 90° tilt up/down
+      
+      isInteracting.current = true;
+    }, []);
 
-    // 1. Move Mouse Left/Right -> Rotate 360 | Move Up/Down -> Tilt View
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
+    const handleWheel = useCallback((e: WheelEvent) => {
+      e.preventDefault();
+      // Scroll wheel for zoom/extra rotation
+      setTargetRotY(prev => prev + e.deltaY * 0.005);
+    }, []);
 
-      // Full 360° Horizontal rotation (Yaw)
-      targetAngleY.current = (mx / rect.width) * Math.PI * 2;
-      // Verticle Tilt bounding mapping (Pitch)
-      targetAngleX.current = ((my / rect.height) * Math.PI) - Math.PI / 2;
-    };
+    const handleMouseLeave = useCallback(() => {
+      isInteracting.current = false;
+    }, []);
 
-    // 2. Scroll Wheel -> Extra Rotation Control (Z-Axis Roll)
-    const handleWheel = (e: WheelEvent) => {
-      // Modulates Z rotation gently on trackpad/mousewheel scroll
-      targetAngleZ.current += e.deltaY * 0.002;
-    };
-
-    // 3. Touch Drag -> Mobile Controls
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
-      const rect = canvas.getBoundingClientRect();
-      const tx = e.touches[0].clientX - rect.left;
-      const ty = e.touches[0].clientY - rect.top;
-
-      targetAngleY.current = (tx / rect.width) * Math.PI * 2;
-      targetAngleX.current = ((ty / rect.height) * Math.PI) - Math.PI / 2;
-    };
-
-    // Animation Loop optimized for 120FPS setups
-    const animate = () => {
+    // Animation loop with smooth interpolation (Lerp for 120FPS feel)
+    let lastTimestamp = 0;
+    const animate = (timestamp: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // Smooth interpolation (lerp) - 0.08 gives smooth glide effect
+      currentRotX.current += (targetRotX - currentRotX.current) * 0.08;
+      currentRotY.current += (targetRotY - currentRotY.current) * 0.08;
+      
       timeRef.current += 16;
       const time = timeRef.current;
-
-      // Interpolation (Lerp) for liquid smooth rendering mechanics
-      angleX.current += (targetAngleX.current - angleX.current) * 0.05;
-      angleY.current += (targetAngleY.current - angleY.current) * 0.05;
-      angleZ.current += (targetAngleZ.current - angleZ.current) * 0.05;
-
-      // Space Vacuum Cleansing
-      ctx.fillStyle = '#010105';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Render background cosmos
-      drawStars(time);
-
-      // Matrix computation setup for Depth Buffering
-      const sunRadius = Math.min(canvas.width, canvas.height) * 0.038;
-      const sunProj = project3D(0, 0, 0);
-
-      const renderingQueue: any[] = [
-        { type: 'sun', z: sunProj.z, x: sunProj.x, y: sunProj.y, scale: sunProj.scale }
-      ];
-
-      // Update and map planets into perspective array
-      for (const planet of planetsRef.current) {
-        planet.angle += planet.speed; // Increment orbital movement
+      
+      // Clear with deep space gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#0a0a1a');
+      gradient.addColorStop(0.5, '#060612');
+      gradient.addColorStop(1, '#02020a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw stars first (background)
+      drawStars3D(ctx, currentRotX.current, currentRotY.current, width, height, time);
+      
+      // Get all planets with their depths for Z-buffering
+      const planetsWithDepth = planetsRef.current.map(planet => {
+        const planetX = Math.cos(planet.angle) * planet.distance;
+        const planetZ = Math.sin(planet.angle) * planet.distance;
+        const planetY = Math.sin(planet.angle) * planet.tiltAngle * 15;
         
-        const px = Math.cos(planet.angle) * planet.distance;
-        const pz = Math.sin(planet.angle) * planet.distance;
-        const py = 0; // Flat base grid inside 3D environment
-
-        const pt = project3D(px, py, pz);
-        planet.projX = pt.x;
-        planet.projY = pt.y;
-        planet.projZ = pt.z;
-
-        renderingQueue.push({ type: 'planet', z: pt.z, scale: pt.scale, data: planet });
+        const projected = project3D(
+          { x: planetX, y: planetY, z: planetZ },
+          currentRotX.current,
+          currentRotY.current,
+          width,
+          height
+        );
+        
+        return { planet, projected, depth: projected?.z || 9999 };
+      });
+      
+      // Sort planets by depth (farthest first) for proper occlusion
+      planetsWithDepth.sort((a, b) => b.depth - a.depth);
+      
+      // Draw Sun (always at center)
+      drawSun3D(ctx, currentRotX.current, currentRotY.current, width, height, time);
+      
+      // Draw planets in correct Z-order
+      for (const { planet, projected } of planetsWithDepth) {
+        if (!projected) continue;
+        drawPlanet3D(ctx, planet, currentRotX.current, currentRotY.current, width, height, time);
       }
-
-      // ─── TRUE 3D DEPTH SORTING (Z-INDEX BUFFER) ───
-      renderingQueue.sort((a, b) => b.z - a.z); // Render further objects first
-
-      // Draw Orbit system paths in perspective
-      draw3DOrbitPaths();
-
-      // Final Render cycle
-      for (const item of renderingQueue) {
-        if (item.type === 'sun') {
-          drawSun(item.x, item.y, sunRadius, item.scale);
-        } else if (item.type === 'planet') {
-          drawPlanet(item.data, item.scale);
-        }
+      
+      // Update planet angles
+      for (const planet of planetsRef.current) {
+        planet.angle += planet.speed;
+        if (planet.angle > Math.PI * 2) planet.angle -= Math.PI * 2;
       }
-
+      
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -399,35 +480,48 @@ export const GalaxyBackground = () => {
       init();
     };
 
-    // Event Registration
-    window.addEventListener('resize', handleResize);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('wheel', handleWheel, { passive: true });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+    // Setup event listeners
+    const setupEventListeners = () => {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('touchmove', handleMouseMove);
+      window.addEventListener('mouseleave', handleMouseLeave);
+      window.addEventListener('wheel', handleWheel, { passive: false });
+      
+      // Optional: Add touch start for better mobile experience
+      window.addEventListener('touchstart', handleMouseMove);
+    };
+
+    const removeEventListeners = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleMouseMove);
+    };
 
     handleResize();
-    animate();
+    window.addEventListener('resize', handleResize);
+    setupEventListeners();
+    animate(0);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('wheel', handleWheel);
-      canvas.removeEventListener('touchmove', handleTouchMove);
-      cancelAnimationFrame(animationRef.current);
+      removeEventListeners();
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
-  }, []);
+  }, [project3D, handleMouseMove, handleWheel, handleMouseLeave]);
 
   return (
     <canvas
       ref={canvasRef}
       className="fixed inset-0 -z-10"
-      style={{
+      style={{ 
         display: 'block',
-        width: '100vw',
-        height: '100vh',
-        userSelect: 'none',
-        background: '#010105',
-        cursor: 'crosshair'
+        width: '100%',
+        height: '100%',
+        userSelect: 'none'
       }}
     />
   );
