@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Star {
   x: number;
@@ -29,11 +29,9 @@ export const GalaxyBackground = () => {
   const animationRef = useRef<number>();
   const timeRef = useRef(0);
   
-  // For 360-degree view control
-  const [rotationAngle, setRotationAngle] = useState(0);
-  const isDragging = useRef(false);
-  const lastMouseX = useRef(0);
-  const dragStartAngle = useRef(0);
+  // For 360-degree view control based on cursor position
+  const rotationAngle = useRef(0);
+  const targetRotation = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -338,7 +336,7 @@ export const GalaxyBackground = () => {
       }
     };
 
-    const drawOrbitPaths = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, rotation: number) => {
+    const drawOrbitPaths = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number) => {
       ctx.setLineDash([5, 8]);
       ctx.lineWidth = 0.5;
       for (const planet of planetsRef.current) {
@@ -350,51 +348,40 @@ export const GalaxyBackground = () => {
       ctx.setLineDash([]);
     };
 
-    // Mouse/Touch event handlers for 360-degree rotation
-    const handleMouseDown = (e: MouseEvent | TouchEvent) => {
-      isDragging.current = true;
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      lastMouseX.current = clientX;
-      dragStartAngle.current = rotationAngle;
+    // Mouse move handler for cursor-based rotation (no click needed)
+    const handleMouseMove = (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
       
-      // Change cursor style
-      if (canvas) {
-        canvas.style.cursor = 'grabbing';
-      }
+      // Get cursor position relative to canvas
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const canvasWidth = rect.width;
+      
+      // Calculate rotation angle based on cursor X position (0 to 1 range)
+      // Left edge = 0 radians, Right edge = 2*PI radians (full circle)
+      const normalizedX = Math.max(0, Math.min(1, mouseX / canvasWidth));
+      // Map to full 360 degrees (2 * PI radians)
+      const newAngle = normalizedX * Math.PI * 2;
+      
+      // Apply smooth lerp for better experience
+      targetRotation.current = newAngle;
     };
 
-    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging.current) return;
-      
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const deltaX = clientX - lastMouseX.current;
-      
-      // Convert mouse movement to rotation angle (sensitivity factor)
-      const sensitivity = 0.005;
-      let newAngle = dragStartAngle.current + deltaX * sensitivity;
-      
-      // Normalize angle to keep it within 0 to 2*PI
-      newAngle = newAngle % (Math.PI * 2);
-      if (newAngle < 0) newAngle += Math.PI * 2;
-      
-      setRotationAngle(newAngle);
-    };
-
-    const handleMouseUp = () => {
-      isDragging.current = false;
-      if (canvas) {
-        canvas.style.cursor = 'grab';
-      }
-    };
-
-    // Add wheel event for horizontal scroll support
-    const handleWheel = (e: WheelEvent) => {
+    // Touch move handler for mobile devices
+    const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
-      const delta = e.deltaY * 0.002;
-      let newAngle = rotationAngle + delta;
-      newAngle = newAngle % (Math.PI * 2);
-      if (newAngle < 0) newAngle += Math.PI * 2;
-      setRotationAngle(newAngle);
+      const canvas = canvasRef.current;
+      if (!canvas || !e.touches[0]) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const touchX = e.touches[0].clientX - rect.left;
+      const canvasWidth = rect.width;
+      
+      const normalizedX = Math.max(0, Math.min(1, touchX / canvasWidth));
+      const newAngle = normalizedX * Math.PI * 2;
+      
+      targetRotation.current = newAngle;
     };
 
     let animationId: number;
@@ -414,6 +401,9 @@ export const GalaxyBackground = () => {
       timeRef.current += 16;
       const time = timeRef.current;
       
+      // Smooth rotation interpolation (lerp for smoother motion)
+      rotationAngle.current += (targetRotation.current - rotationAngle.current) * 0.08;
+      
       // Clear with deep space gradient
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
       gradient.addColorStop(0, '#0a0a1a');
@@ -428,13 +418,13 @@ export const GalaxyBackground = () => {
       // Save context state for rotation
       ctx.save();
       
-      // Rotate the entire solar system around the center
+      // Rotate the entire solar system around the center based on cursor position
       ctx.translate(centerX, centerY);
-      ctx.rotate(rotationAngle);
+      ctx.rotate(rotationAngle.current);
       ctx.translate(-centerX, -centerY);
       
       // Draw orbit paths (they rotate with the system)
-      drawOrbitPaths(ctx, centerX, centerY, rotationAngle);
+      drawOrbitPaths(ctx, centerX, centerY);
       
       // Draw Sun (always at center)
       const sunRadius = Math.min(width, height) * 0.04;
@@ -468,41 +458,35 @@ export const GalaxyBackground = () => {
     };
 
     const handleResize = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       init();
     };
 
-    // Setup event listeners for 360-degree control
+    // Setup event listeners for cursor-based rotation (no click needed)
     const setupEventListeners = () => {
-      canvas.addEventListener('mousedown', handleMouseDown);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
       canvas.addEventListener('mousemove', handleMouseMove);
-      canvas.addEventListener('mouseup', handleMouseUp);
-      canvas.addEventListener('mouseleave', handleMouseUp);
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
       
-      canvas.addEventListener('touchstart', handleMouseDown);
-      canvas.addEventListener('touchmove', handleMouseMove);
-      canvas.addEventListener('touchend', handleMouseUp);
-      canvas.addEventListener('touchcancel', handleMouseUp);
-      
-      canvas.addEventListener('wheel', handleWheel, { passive: false });
-      
-      // Set initial cursor style
-      canvas.style.cursor = 'grab';
+      // Optional: reset rotation when mouse leaves canvas
+      canvas.addEventListener('mouseleave', () => {
+        // Smoothly return to center or keep last position
+        // You can uncomment below to reset to center when mouse leaves
+        // targetRotation.current = Math.PI; // Center position
+      });
     };
 
     const removeEventListeners = () => {
-      canvas.removeEventListener('mousedown', handleMouseDown);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
       canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseup', handleMouseUp);
-      canvas.removeEventListener('mouseleave', handleMouseUp);
-      
-      canvas.removeEventListener('touchstart', handleMouseDown);
-      canvas.removeEventListener('touchmove', handleMouseMove);
-      canvas.removeEventListener('touchend', handleMouseUp);
-      canvas.removeEventListener('touchcancel', handleMouseUp);
-      
-      canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('touchmove', handleTouchMove);
     };
 
     handleResize();
@@ -515,7 +499,7 @@ export const GalaxyBackground = () => {
       removeEventListeners();
       cancelAnimationFrame(animationId);
     };
-  }, [rotationAngle]);
+  }, []);
 
   return (
     <canvas
@@ -525,7 +509,8 @@ export const GalaxyBackground = () => {
         display: 'block',
         width: '100%',
         height: '100%',
-        userSelect: 'none'
+        userSelect: 'none',
+        cursor: 'crosshair'
       }}
     />
   );
