@@ -8,6 +8,10 @@ interface Star {
   opacity: number;
   color: string;
   twinkleSpeed: number;
+  // Additional properties for original starfield
+  originalX?: number;
+  originalY?: number;
+  hasGlow?: boolean;
 }
 
 interface Planet {
@@ -53,19 +57,53 @@ export const GalaxyBackground = () => {
       const height = canvas.height;
       const maxDim = Math.max(width, height);
 
-      // 3D Starfield Generation
+      // Combined Starfield: 3D stars + Original twinkling stars
       starsRef.current = [];
       const starColors = ['#ffffff', '#e0e8ff', '#ffe8e0', '#ffe0f0'];
       
-      for (let i = 0; i < 500; i++) {
+      // 1. Background 3D stars (deep space)
+      for (let i = 0; i < 300; i++) {
         starsRef.current.push({
           x: (Math.random() - 0.5) * maxDim * 3,
           y: (Math.random() - 0.5) * maxDim * 3,
           z: (Math.random() - 0.5) * maxDim * 3,
-          size: 0.5 + Math.random() * 1.5,
-          opacity: 0.2 + Math.random() * 0.6,
+          size: 0.3 + Math.random() * 0.8,
+          opacity: 0.2 + Math.random() * 0.4,
           color: starColors[Math.floor(Math.random() * starColors.length)],
           twinkleSpeed: 0.5 + Math.random() * 2,
+          hasGlow: false,
+        });
+      }
+      
+      // 2. Original twinkling stars (static on screen space)
+      for (let i = 0; i < 400; i++) {
+        starsRef.current.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          z: 0,
+          size: 0.5 + Math.random() * 1.5,
+          opacity: 0.3 + Math.random() * 0.5,
+          color: starColors[Math.floor(Math.random() * starColors.length)],
+          twinkleSpeed: 0.5 + Math.random() * 2,
+          originalX: Math.random() * width,
+          originalY: Math.random() * height,
+          hasGlow: Math.random() > 0.8,
+        });
+      }
+      
+      // 3. Bright twinkling stars (larger, more prominent)
+      for (let i = 0; i < 100; i++) {
+        starsRef.current.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          z: 0,
+          size: 1.5 + Math.random() * 2,
+          opacity: 0.5 + Math.random() * 0.4,
+          color: '#ffffff',
+          twinkleSpeed: 0.3 + Math.random() * 1,
+          originalX: Math.random() * width,
+          originalY: Math.random() * height,
+          hasGlow: true,
         });
       }
 
@@ -120,14 +158,61 @@ export const GalaxyBackground = () => {
 
     const drawStars = (time: number) => {
       for (const star of starsRef.current) {
-        const pt = project3D(star.x, star.y, star.z);
-        const twinkle = 0.7 + Math.sin(time * star.twinkleSpeed) * 0.3;
+        let x, y, scale = 1;
         
+        // Handle 3D stars (with z coordinate)
+        if (star.z !== 0 || star.originalX === undefined) {
+          const pt = project3D(star.x, star.y, star.z);
+          x = pt.x;
+          y = pt.y;
+          scale = pt.scale;
+        } else {
+          // Original stars remain in screen space
+          x = star.x;
+          y = star.y;
+          // Slight parallax effect for original stars (subtle)
+          x += angleY.current * 15;
+          y += angleX.current * 10;
+          
+          // Wrap around edges
+          if (x < -50) x = canvas.width + 50;
+          if (x > canvas.width + 50) x = -50;
+          if (y < -50) y = canvas.height + 50;
+          if (y > canvas.height + 50) y = -50;
+        }
+        
+        // Twinkling effect
+        const twinkle = 0.6 + Math.sin(time * star.twinkleSpeed) * 0.4;
+        const opacity = Math.min(1, star.opacity * twinkle);
+        
+        // Draw star
+        const finalSize = Math.max(0.3, star.size * (scale > 0 ? scale : 1));
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, Math.max(0.2, star.size * pt.scale), 0, Math.PI * 2);
+        ctx.arc(x, y, finalSize, 0, Math.PI * 2);
         ctx.fillStyle = star.color;
-        ctx.globalAlpha = Math.max(0, Math.min(1, star.opacity * twinkle));
+        ctx.globalAlpha = opacity;
         ctx.fill();
+        
+        // Draw glow for brighter stars
+        if (star.hasGlow || star.size > 1.5) {
+          ctx.beginPath();
+          ctx.arc(x, y, finalSize * 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = opacity * 0.25;
+          ctx.fill();
+        }
+        
+        // Cross-shaped sparkle for very bright stars
+        if (star.size > 2 && twinkle > 0.8) {
+          ctx.globalAlpha = opacity * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(x - finalSize * 2, y);
+          ctx.lineTo(x + finalSize * 2, y);
+          ctx.moveTo(x, y - finalSize * 2);
+          ctx.lineTo(x, y + finalSize * 2);
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
       }
       ctx.globalAlpha = 1;
     };
