@@ -6,6 +6,8 @@ interface Star {
   size: number;
   opacity: number;
   color: string;
+  twinkleSpeed: number;
+  twinklePhase: number;
 }
 
 interface Planet {
@@ -24,6 +26,7 @@ interface Planet {
 export const GalaxyBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const planetsRef = useRef<Planet[]>([]);
+  const starsRef = useRef<Star[]>([]);
   const animationRef = useRef<number>();
   const mouseRef = useRef({ x: 0, y: 0 });
 
@@ -34,7 +37,7 @@ export const GalaxyBackground = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Generate elegant starfield
+    // Generate elegant starfield with twinkling properties
     const generateStars = (width: number, height: number): Star[] => {
       const stars: Star[] = [];
       
@@ -46,6 +49,8 @@ export const GalaxyBackground = () => {
           size: 0.3 + Math.random() * 0.5,
           opacity: 0.1 + Math.random() * 0.3,
           color: `rgba(255, 255, 255, ${0.1 + Math.random() * 0.3})`,
+          twinkleSpeed: 0.5 + Math.random() * 2,
+          twinklePhase: Math.random() * Math.PI * 2,
         });
       }
       
@@ -58,6 +63,8 @@ export const GalaxyBackground = () => {
           size: 0.6 + Math.random() * 0.8,
           opacity: brightness,
           color: `rgba(255, 245, 235, ${brightness})`,
+          twinkleSpeed: 0.8 + Math.random() * 2.5,
+          twinklePhase: Math.random() * Math.PI * 2,
         });
       }
       
@@ -70,17 +77,15 @@ export const GalaxyBackground = () => {
           size: 1.2 + Math.random() * 1.5,
           opacity: 0.6 + Math.random() * 0.3,
           color: colors[Math.floor(Math.random() * colors.length)],
+          twinkleSpeed: 0.3 + Math.random() * 1.5,
+          twinklePhase: Math.random() * Math.PI * 2,
         });
       }
       
       return stars;
     };
 
-    let starsRef = generateStars(canvas.width, canvas.height);
-
     const initPlanets = (width: number, height: number) => {
-      const centerX = width / 2;
-      const centerY = height / 2;
       const baseDistance = Math.min(width, height) * 0.095;
       
       return [
@@ -123,12 +128,10 @@ export const GalaxyBackground = () => {
       ];
     };
 
-    // Smooth star twinkling animation
-    let starTwinkle = 0;
-    
-    const drawStars = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number) => {
-      for (const star of starsRef) {
-        const twinkle = 0.85 + Math.sin(time * 0.002 + star.x * 0.01) * 0.15;
+    const drawStars = (ctx: CanvasRenderingContext2D, time: number) => {
+      for (const star of starsRef.current) {
+        // Subtle twinkling
+        const twinkle = 0.7 + Math.sin(time * 0.002 * star.twinkleSpeed + star.twinklePhase) * 0.3;
         const finalOpacity = star.opacity * twinkle;
         
         ctx.beginPath();
@@ -145,7 +148,7 @@ export const GalaxyBackground = () => {
         }
         ctx.fill();
         
-        // Subtle glow for brighter stars
+        // Glow for brighter stars
         if (star.size > 1.2) {
           ctx.beginPath();
           ctx.arc(star.x, star.y, star.size * 2.5, 0, Math.PI * 2);
@@ -250,10 +253,10 @@ export const GalaxyBackground = () => {
       }
     };
 
-    const drawOrbits = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, planets: Planet[]) => {
+    const drawOrbits = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number) => {
       ctx.setLineDash([4, 6]);
       ctx.lineWidth = 0.5;
-      for (const planet of planets) {
+      for (const planet of planetsRef.current) {
         ctx.beginPath();
         ctx.arc(centerX, centerY, planet.distance, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(100, 120, 160, 0.12)';
@@ -273,7 +276,8 @@ export const GalaxyBackground = () => {
     };
 
     let time = 0;
-    let planets = initPlanets(canvas.width, canvas.height);
+    starsRef.current = generateStars(canvas.width, canvas.height);
+    planetsRef.current = initPlanets(canvas.width, canvas.height);
 
     const animate = () => {
       const canvas = canvasRef.current;
@@ -305,18 +309,18 @@ export const GalaxyBackground = () => {
       ctx.save();
       ctx.translate(offsetX, offsetY);
       
-      // Draw stars
-      drawStars(ctx, width, height, time);
+      // Draw stars with twinkling
+      drawStars(ctx, time);
       
       // Draw orbits
-      drawOrbits(ctx, centerX + offsetX * 0.3, centerY + offsetY * 0.3, planets);
+      drawOrbits(ctx, centerX + offsetX * 0.3, centerY + offsetY * 0.3);
       
       // Draw Sun
       const sunRadius = Math.min(width, height) * 0.03;
       drawSun(ctx, centerX + offsetX * 0.1, centerY + offsetY * 0.1, sunRadius, time);
       
       // Update and draw planets
-      for (const planet of planets) {
+      for (const planet of planetsRef.current) {
         planet.angle += planet.speed;
         
         const planetX = centerX + offsetX * 0.5 + Math.cos(planet.angle) * planet.distance;
@@ -346,41 +350,13 @@ export const GalaxyBackground = () => {
       
       animationRef.current = requestAnimationFrame(animate);
     };
-    const drawStars = (ctx: CanvasRenderingContext2D, time: number, width: number, height: number) => {
-      for (const star of starsRef.current) {
-        // Subtle twinkling
-        const twinkle = 0.7 + Math.sin(time * star.twinkleSpeed) * 0.3;
-        const opacity = star.opacity * twinkle;
-        
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fillStyle = star.color;
-        ctx.globalAlpha = opacity;
-        ctx.fill();
-        
-        // Glow for brighter stars
-        if (star.size > 1.5) {
-          ctx.beginPath();
-          ctx.arc(star.x, star.y, star.size * 2, 0, Math.PI * 2);
-          ctx.fillStyle = star.color;
-          ctx.globalAlpha = opacity * 0.3;
-          ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-    };
 
-
-
-
-
-    
     const handleResize = () => {
       if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      starsRef = generateStars(canvas.width, canvas.height);
-      planets = initPlanets(canvas.width, canvas.height);
+      starsRef.current = generateStars(canvas.width, canvas.height);
+      planetsRef.current = initPlanets(canvas.width, canvas.height);
     };
 
     handleResize();
