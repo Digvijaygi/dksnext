@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Star {
   x: number;
@@ -28,6 +28,12 @@ export const GalaxyBackground = () => {
   const planetsRef = useRef<Planet[]>([]);
   const animationRef = useRef<number>();
   const timeRef = useRef(0);
+  
+  // For 360-degree view control
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const isDragging = useRef(false);
+  const lastMouseX = useRef(0);
+  const dragStartAngle = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,8 +45,6 @@ export const GalaxyBackground = () => {
     const init = () => {
       const width = canvas.width;
       const height = canvas.height;
-      const centerX = width / 2;
-      const centerY = height / 2;
 
       // Clean starfield - not too many stars
       starsRef.current = [];
@@ -334,7 +338,7 @@ export const GalaxyBackground = () => {
       }
     };
 
-    const drawOrbitPaths = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number) => {
+    const drawOrbitPaths = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, rotation: number) => {
       ctx.setLineDash([5, 8]);
       ctx.lineWidth = 0.5;
       for (const planet of planetsRef.current) {
@@ -346,8 +350,54 @@ export const GalaxyBackground = () => {
       ctx.setLineDash([]);
     };
 
+    // Mouse/Touch event handlers for 360-degree rotation
+    const handleMouseDown = (e: MouseEvent | TouchEvent) => {
+      isDragging.current = true;
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      lastMouseX.current = clientX;
+      dragStartAngle.current = rotationAngle;
+      
+      // Change cursor style
+      if (canvas) {
+        canvas.style.cursor = 'grabbing';
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging.current) return;
+      
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const deltaX = clientX - lastMouseX.current;
+      
+      // Convert mouse movement to rotation angle (sensitivity factor)
+      const sensitivity = 0.005;
+      let newAngle = dragStartAngle.current + deltaX * sensitivity;
+      
+      // Normalize angle to keep it within 0 to 2*PI
+      newAngle = newAngle % (Math.PI * 2);
+      if (newAngle < 0) newAngle += Math.PI * 2;
+      
+      setRotationAngle(newAngle);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      if (canvas) {
+        canvas.style.cursor = 'grab';
+      }
+    };
+
+    // Add wheel event for horizontal scroll support
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY * 0.002;
+      let newAngle = rotationAngle + delta;
+      newAngle = newAngle % (Math.PI * 2);
+      if (newAngle < 0) newAngle += Math.PI * 2;
+      setRotationAngle(newAngle);
+    };
+
     let animationId: number;
-    let lastTime = 0;
 
     const animate = (timestamp: number) => {
       const canvas = canvasRef.current;
@@ -372,17 +422,25 @@ export const GalaxyBackground = () => {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
       
-      // Draw stars
+      // Draw stars (static background, not rotating)
       drawStars(ctx, time, width, height);
       
-      // Draw orbit paths
-      drawOrbitPaths(ctx, centerX, centerY);
+      // Save context state for rotation
+      ctx.save();
       
-      // Draw Sun
+      // Rotate the entire solar system around the center
+      ctx.translate(centerX, centerY);
+      ctx.rotate(rotationAngle);
+      ctx.translate(-centerX, -centerY);
+      
+      // Draw orbit paths (they rotate with the system)
+      drawOrbitPaths(ctx, centerX, centerY, rotationAngle);
+      
+      // Draw Sun (always at center)
       const sunRadius = Math.min(width, height) * 0.04;
       drawSun(ctx, centerX, centerY, sunRadius, time);
       
-      // Update and draw planets
+      // Update and draw planets (with their own orbits)
       for (const planet of planetsRef.current) {
         planet.angle += planet.speed;
         
@@ -403,6 +461,9 @@ export const GalaxyBackground = () => {
         );
       }
       
+      // Restore context state
+      ctx.restore();
+      
       animationId = requestAnimationFrame(animate);
     };
 
@@ -412,15 +473,49 @@ export const GalaxyBackground = () => {
       init();
     };
 
+    // Setup event listeners for 360-degree control
+    const setupEventListeners = () => {
+      canvas.addEventListener('mousedown', handleMouseDown);
+      canvas.addEventListener('mousemove', handleMouseMove);
+      canvas.addEventListener('mouseup', handleMouseUp);
+      canvas.addEventListener('mouseleave', handleMouseUp);
+      
+      canvas.addEventListener('touchstart', handleMouseDown);
+      canvas.addEventListener('touchmove', handleMouseMove);
+      canvas.addEventListener('touchend', handleMouseUp);
+      canvas.addEventListener('touchcancel', handleMouseUp);
+      
+      canvas.addEventListener('wheel', handleWheel, { passive: false });
+      
+      // Set initial cursor style
+      canvas.style.cursor = 'grab';
+    };
+
+    const removeEventListeners = () => {
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('mouseleave', handleMouseUp);
+      
+      canvas.removeEventListener('touchstart', handleMouseDown);
+      canvas.removeEventListener('touchmove', handleMouseMove);
+      canvas.removeEventListener('touchend', handleMouseUp);
+      canvas.removeEventListener('touchcancel', handleMouseUp);
+      
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+
     handleResize();
     window.addEventListener('resize', handleResize);
+    setupEventListeners();
     animate(0);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      removeEventListeners();
       cancelAnimationFrame(animationId);
     };
-  }, []);
+  }, [rotationAngle]);
 
   return (
     <canvas
@@ -430,6 +525,7 @@ export const GalaxyBackground = () => {
         display: 'block',
         width: '100%',
         height: '100%',
+        userSelect: 'none'
       }}
     />
   );
