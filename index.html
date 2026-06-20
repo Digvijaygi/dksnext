@@ -1,47 +1,52 @@
-<head>
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- CHARACTER SET & VIEWPORT (Mobile first) -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- TITLE - Sab se important (50-60 characters rakho) -->
-    <title>DKSNEXT | Digvijay - Full Stack Developer & Web Designer</title>
+    <!-- TITLE - Powerful & Clickable (50-60 chars) -->
+    <title>DKSNEXT | Digvijay - Full Stack Developer &amp; Web Designer</title>
     
-    <!-- META DESCRIPTION - Click-through rate badhata hai (150-160 characters) -->
-    <meta name="description" content="Digvijay (DKSNEXT) - Professional Full Stack Developer. React, Node.js, Web Design expert. 5+ years experience. Let's build something amazing!">
+    <!-- META DESCRIPTION - SEO + CTR badhaye (150-160 chars) -->
+    <meta name="description" content="Digvijay (DKSNEXT) - Professional Full Stack Developer &amp; Web Designer. Expert in React, Node.js, and modern web design. 5+ years of experience.">
     
-    <!-- GOOGLE SEARCH CONSOLE VERIFICATION (Tumhara diya hua) -->
+    <!-- GOOGLE SEARCH CONSOLE VERIFICATION (Tumhara diya hua tag) -->
     <meta name="google-site-verification" content="qpLZe2v2K_Ts2DW2INap6-YfT_Six19k61HPZ8k55jw" />
     
-    <!-- AUTHOR & ROBOTS (Google ko batao ki page index karo) -->
+    <!-- AUTHOR & ROBOTS (Google ko batao ki index karo) -->
     <meta name="author" content="Digvijay Sahni" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
     
-    <!-- KEYWORDS (Utne nahi chalte, but still daal do) -->
-    <meta name="keywords" content="Digvijay Sahni, DKSNEXT, Full Stack Developer, Web Designer, React Developer, Node.js, Portfolio, Web Development" />
+    <!-- KEYWORDS (Auxiliary) -->
+    <meta name="keywords" content="Digvijay Sahni, DKSNEXT, Full Stack Developer, Web Designer, React Developer, Node.js, Portfolio, Web Development, Freelancer" />
     
-    <!-- OPEN GRAPH (Facebook, LinkedIn, WhatsApp pe share karo toh dikhe) -->
-    <meta property="og:title" content="DKSNEXT | Digvijay - Full Stack Developer & Web Designer" />
-    <meta property="og:description" content="Hire Digvijay (DKSNEXT) for stunning websites & web apps. Expert in React, Node.js, and modern web design." />
+    <!-- OPEN GRAPH (Facebook, WhatsApp, LinkedIn share ke liye) -->
+    <meta property="og:title" content="DKSNEXT | Digvijay - Full Stack Developer &amp; Web Designer" />
+    <meta property="og:description" content="Hire Digvijay (DKSNEXT) for stunning websites &amp; web apps. Expert in React, Node.js, and modern web design." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://dks.dev" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/ms479gls6iP8w1vFuZOBuf17UK42/social-images/social-1775065008746-Screenshot_2026-04-01_230524.webp" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="DKSNEXT" />
     
-    <!-- TWITTER CARDS (Twitter pe share karo toh stylish dikhe) -->
+    <!-- TWITTER CARDS (Twitter pe share karo toh achha dikhe) -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@digvijaysahni" />
     <meta name="twitter:creator" content="@digvijaysahni" />
-    <meta name="twitter:title" content="DKSNEXT | Digvijay - Full Stack Developer & Web Designer" />
-    <meta name="twitter:description" content="Portfolio of Digvijay (DKSNEXT) - A passionate Full Stack Developer creating beautiful websites." />
+    <meta name="twitter:title" content="DKSNEXT | Digvijay - Full Stack Developer &amp; Web Designer" />
+    <meta name="twitter:description" content="Portfolio of Digvijay (DKSNEXT) - A passionate Full Stack Developer creating beautiful, responsive websites." />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/ms479gls6iP8w1vFuZOBuf17UK42/social-images/social-1775065008746-Screenshot_2026-04-01_230524.webp" />
     
-    <!-- CANONICAL TAG (Duplicate content se bachata hai) -->
+    <!-- CANONICAL TAG (Duplicate content issue solve) -->
     <link rel="canonical" href="https://dks.dev" />
     
     <!-- FAVICON -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-
-    <!-- STRUCTURED DATA (JSON-LD) - Google Rich Results ke liye SUPER IMPORTANT -->
+    
+    <!-- STRUCTURED DATA (JSON-LD) - Google Rich Results ke liye MUST HAVE -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -59,7 +64,19 @@
     }
     </script>
     
-    <!-- ADDITIONAL SEO: LANGUAGE & GEO TAGS (Agar India target hai toh) -->
+    <!-- GEO TAGS (India target kar rahe ho toh) -->
     <meta name="geo.region" content="IN" />
     <meta name="language" content="English" />
-</head>
+    
+    <!-- THEME COLOR (Mobile browsers ke liye) -->
+    <meta name="theme-color" content="#000000" />
+  </head>
+
+  <body>
+    <!-- YAHI TUMHARA REACT APP RENDER HOGA - BILKUL WAHI RAKHA HAI -->
+    <div id="root"></div>
+    
+    <!-- TUMHARA REACT BUNDLE (Vite ya Webpack se aayega) -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
