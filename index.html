@@ -46,7 +46,7 @@
     <!-- FAVICON -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     
-    <!-- STRUCTURED DATA (JSON-LD) - YAHAN BHI SAHI URL DAALO -->
+    <!-- STRUCTURED DATA (JSON-LD) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -77,19 +77,38 @@
         * {
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            /* overflow: hidden; REMOVED - scrolling should work */
         }
         
-        body {
+        html, body {
             background: #111;
             font-family: Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto; /* Allow scrolling */
         }
         
-        canvas {
-            display: block;
+        /* Canvas as background - fixed position */
+        #fluidCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
+            display: block;
             cursor: auto;
+            z-index: 0;
+            pointer-events: none; /* Allow clicks to pass through to React app */
+        }
+        
+        /* React app container - above canvas, allows scrolling */
+        #root {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            /* Add some transparency so canvas shows through */
+            background: transparent;
+            pointer-events: auto; /* Enable interaction with React app */
         }
         
         .info {
@@ -97,18 +116,30 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.7);
             font-size: 13px;
             text-align: center;
             pointer-events: none;
             user-select: none;
             font-family: Arial, Helvetica, sans-serif;
             text-shadow: 0 0 20px rgba(0,0,0,0.9);
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.4);
             padding: 6px 18px;
             border-radius: 20px;
             backdrop-filter: blur(5px);
             letter-spacing: 0.5px;
+            z-index: 10;
+        }
+        
+        .info a {
+            color: rgba(255, 255, 255, 0.9);
+            pointer-events: auto;
+            text-decoration: none;
+        }
+        
+        .info a:hover {
+            color: #fff;
+            text-decoration: underline;
         }
         
         .cursor-glow {
@@ -138,7 +169,12 @@
   </head>
 
   <body>
+    <!-- Canvas - background fluid effect -->
     <canvas id="fluidCanvas"></canvas>
+    
+    <!-- React App Container -->
+    <div id="root"></div>
+    
     <div class="info">
       ✨ Developed by 
       <a href="https://dksnext.vercel.app/" target="_blank" rel="noopener noreferrer">
@@ -160,7 +196,9 @@
         'use strict';
 
         const canvas = document.getElementById('fluidCanvas');
-        const cursorGlow = document.getElementById('cursorGlow');
+        const cursorGlow = document.createElement('div');
+        cursorGlow.className = 'cursor-glow';
+        document.body.appendChild(cursorGlow);
         
         // Get WebGL context with proper error handling
         function getWebGLContext(canvas) {
@@ -383,7 +421,7 @@
                 case 1: r = q, g = v, b = p; break;
                 case 2: r = p, g = v, b = t; break;
                 case 3: r = p, g = q, b = v; break;
-                case 4: r = t, g = p, b = v; break;
+                case 4: r = t, g = p, b = q; break;
                 case 5: r = v, g = p, b = q; break;
             }
 
@@ -1651,6 +1689,7 @@
         console.log('⌨️ Press "P" to pause');
         console.log('␣ Press Space for random splats');
     </script>  
+    
     <!-- TUMHARA REACT APP -->
     <div id="root"></div>
     
