@@ -1,24 +1,246 @@
 import React, { useEffect, useRef } from 'react';
 
-interface FluidSimulationProps {
-  className?: string;
+interface Star {
+  x: number;
+  y: number;
+  z: number;
+  size: number;
+  opacity: number;
+  color: string;
+  twinkleSpeed: number;
+  originalX?: number;
+  originalY?: number;
+  hasGlow?: boolean;
 }
 
-export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = '' }) => {
+export const GalaxyBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const fluidCanvasRef = useRef<HTMLCanvasElement>(null);
+  const starsRef = useRef<Star[]>([]);
+  const animationRef = useRef<number>(0);
+  const timeRef = useRef<number>(0);
 
+  // 3D Angles for stars
+  const angleX = useRef<number>(0.6);
+  const angleY = useRef<number>(0);
+  const angleZ = useRef<number>(0);
+  
+  const targetAngleX = useRef<number>(0.6);
+  const targetAngleY = useRef<number>(0);
+  const targetAngleZ = useRef<number>(0);
+
+  // ============================================================
+  // STARFIELD CODE
+  // ============================================================
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // ============================================================
-    // FLUID SIMULATION - Auto-paint on cursor move
-    // ============================================================
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    'use strict';
+    const init = () => {
+      const width = canvas.width;
+      const height = canvas.height;
+      const maxDim = Math.max(width, height);
 
-    // Create cursor glow element
+      starsRef.current = [];
+      const starColors = ['#ffffff', '#e0e8ff', '#ffe8e0', '#ffe0f0'];
+      
+      for (let i = 0; i < 300; i++) {
+        starsRef.current.push({
+          x: (Math.random() - 0.5) * maxDim * 3,
+          y: (Math.random() - 0.5) * maxDim * 3,
+          z: (Math.random() - 0.5) * maxDim * 3,
+          size: 0.3 + Math.random() * 0.8,
+          opacity: 0.2 + Math.random() * 0.4,
+          color: starColors[Math.floor(Math.random() * starColors.length)],
+          twinkleSpeed: 0.5 + Math.random() * 2,
+          hasGlow: false,
+        });
+      }
+      
+      for (let i = 0; i < 400; i++) {
+        starsRef.current.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          z: 0,
+          size: 0.3 + Math.random() * 0.8,
+          opacity: 0.3 + Math.random() * 0.5,
+          color: starColors[Math.floor(Math.random() * starColors.length)],
+          twinkleSpeed: 0.5 + Math.random() * 2,
+          originalX: Math.random() * width,
+          originalY: Math.random() * height,
+          hasGlow: Math.random() > 0.8,
+        });
+      }
+      
+      for (let i = 0; i < 100; i++) {
+        starsRef.current.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          z: 0,
+          size: 0.8 + Math.random() * 1.2,
+          opacity: 0.5 + Math.random() * 0.4,
+          color: '#ffffff',
+          twinkleSpeed: 0.3 + Math.random() * 1,
+          originalX: Math.random() * width,
+          originalY: Math.random() * height,
+          hasGlow: true,
+        });
+      }
+    };
+
+    const project3D = (x: number, y: number, z: number) => {
+      let cosY = Math.cos(angleY.current);
+      let sinY = Math.sin(angleY.current);
+      let x1 = x * cosY - z * sinY;
+      let z1 = x * sinY + z * cosY;
+
+      let cosX = Math.cos(angleX.current);
+      let sinX = Math.sin(angleX.current);
+      let y2 = y * cosX - z1 * sinX;
+      let z2 = y * sinX + z1 * cosX;
+
+      let cosZ = Math.cos(angleZ.current);
+      let sinZ = Math.sin(angleZ.current);
+      let x3 = x1 * cosZ - y2 * sinZ;
+      let y3 = x1 * sinZ + y2 * cosZ;
+
+      const fov = Math.max(canvas.width, canvas.height) * 0.8;
+      const scale = fov / (fov + z2);
+
+      return {
+        x: canvas.width / 2 + x3 * scale,
+        y: canvas.height / 2 + y3 * scale,
+        z: z2,
+        scale: scale
+      };
+    };
+
+    const drawStars = (time: number) => {
+      for (const star of starsRef.current) {
+        let x, y, scale = 1;
+        
+        if (star.z !== 0 || star.originalX === undefined) {
+          const pt = project3D(star.x, star.y, star.z);
+          x = pt.x;
+          y = pt.y;
+          scale = pt.scale;
+        } else {
+          x = star.x;
+          y = star.y;
+          x += angleY.current * 15;
+          y += angleX.current * 10;
+          
+          if (x < -50) x = canvas.width + 50;
+          if (x > canvas.width + 50) x = -50;
+          if (y < -50) y = canvas.height + 50;
+          if (y > canvas.height + 50) y = -50;
+        }
+        
+        const twinkle = 0.6 + Math.sin(time * star.twinkleSpeed) * 0.4;
+        const opacity = Math.min(1, star.opacity * twinkle);
+        
+        const finalSize = Math.max(0.2, star.size * (scale > 0 ? scale : 1));
+        ctx.beginPath();
+        ctx.arc(x, y, finalSize, 0, Math.PI * 2);
+        ctx.fillStyle = star.color;
+        ctx.globalAlpha = opacity;
+        ctx.fill();
+        
+        if (star.hasGlow || star.size > 0.8) {
+          ctx.beginPath();
+          ctx.arc(x, y, finalSize * 2, 0, Math.PI * 2);
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = opacity * 0.25;
+          ctx.fill();
+        }
+        
+        if (star.size > 1.2 && twinkle > 0.8) {
+          ctx.globalAlpha = opacity * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(x - finalSize * 1.5, y);
+          ctx.lineTo(x + finalSize * 1.5, y);
+          ctx.moveTo(x, y - finalSize * 1.5);
+          ctx.lineTo(x, y + finalSize * 1.5);
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      targetAngleY.current = (mx / rect.width) * Math.PI * 2;
+      targetAngleX.current = ((my / rect.height) * Math.PI) - Math.PI / 2;
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      targetAngleZ.current += e.deltaY * 0.002;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!e.touches[0]) return;
+      const rect = canvas.getBoundingClientRect();
+      const tx = e.touches[0].clientX - rect.left;
+      const ty = e.touches[0].clientY - rect.top;
+
+      targetAngleY.current = (tx / rect.width) * Math.PI * 2;
+      targetAngleX.current = ((ty / rect.height) * Math.PI) - Math.PI / 2;
+    };
+
+    const animate = () => {
+      timeRef.current += 16;
+      const time = timeRef.current;
+
+      angleX.current += (targetAngleX.current - angleX.current) * 0.05;
+      angleY.current += (targetAngleY.current - angleY.current) * 0.05;
+      angleZ.current += (targetAngleZ.current - angleZ.current) * 0.05;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw stars with transparent background
+      drawStars(time);
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      init();
+    };
+
+    window.addEventListener('resize', handleResize);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('wheel', handleWheel, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    handleResize();
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  // ============================================================
+  // FLUID SIMULATION CODE
+  // ============================================================
+  useEffect(() => {
+    const canvas = fluidCanvasRef.current;
+    if (!canvas) return;
+
+    // Create cursor glow
     const cursorGlow = document.createElement('div');
     cursorGlow.className = 'cursor-glow';
     cursorGlow.style.cssText = `
@@ -35,7 +257,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
     `;
     document.body.appendChild(cursorGlow);
 
-    // Get WebGL context with proper error handling
     function getWebGLContext(canvas: HTMLCanvasElement) {
       const params = {
         alpha: true,
@@ -52,8 +273,8 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       }
 
       if (!gl) {
-        alert('Your browser does not support WebGL. Please use a modern browser.');
-        throw new Error('WebGL not supported');
+        console.warn('WebGL not supported');
+        return null;
       }
 
       let halfFloat;
@@ -67,10 +288,10 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
           supportLinearFiltering = gl.getExtension('OES_texture_half_float_linear');
         }
       } catch (e) {
-        console.warn('Some extensions not available, using fallback');
+        console.warn('Some extensions not available');
       }
 
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
       const halfFloatTexType = isWebGL2 ? gl.HALF_FLOAT : (halfFloat ? halfFloat.HALF_FLOAT_OES : null);
 
@@ -134,19 +355,12 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       }
     }
 
-    // Initialize WebGL
-    let glContext;
-    try {
-      glContext = getWebGLContext(canvas);
-    } catch (e) {
-      document.body.innerHTML = '<div style="color:white;text-align:center;padding:50px;font-size:20px;">⚠️ WebGL not supported in this browser.</div>';
-      throw e;
-    }
+    const glContext = getWebGLContext(canvas);
+    if (!glContext) return;
 
     const gl = glContext.gl;
     const ext = glContext.ext;
 
-    // Resize canvas
     function resizeCanvas() {
       let width = scaleByPixelRatio(canvas.clientWidth);
       let height = scaleByPixelRatio(canvas.clientHeight);
@@ -160,10 +374,9 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
 
     resizeCanvas();
 
-    // Configuration
     const config = {
       SIM_RESOLUTION: 128,
-      DYE_RESOLUTION: 1024,
+      DYE_RESOLUTION: 512,
       CAPTURE_RESOLUTION: 512,
       DENSITY_DISSIPATION: 1,
       VELOCITY_DISSIPATION: 0.2,
@@ -177,11 +390,11 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       COLOR_UPDATE_SPEED: 10,
       PAUSED: false,
       BACK_COLOR: { r: 0, g: 0, b: 0 },
-      TRANSPARENT: false,
+      TRANSPARENT: true,
       BLOOM: true,
-      BLOOM_ITERATIONS: 8,
-      BLOOM_RESOLUTION: 256,
-      BLOOM_INTENSITY: 0.8,
+      BLOOM_ITERATIONS: 6,
+      BLOOM_RESOLUTION: 128,
+      BLOOM_INTENSITY: 0.6,
       BLOOM_THRESHOLD: 0.6,
       BLOOM_SOFT_KNEE: 0.7,
       SUNRAYS: true,
@@ -190,12 +403,8 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
     };
 
     if (isMobile()) {
-      config.DYE_RESOLUTION = 512;
+      config.DYE_RESOLUTION = 256;
     }
-
-    // ============================================================
-    // Utility Functions
-    // ============================================================
 
     function isMobile() {
       return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -257,7 +466,7 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
         case 2: r = p; g = v; b = t; break;
         case 3: r = p; g = q; b = v; break;
         case 4: r = t; g = p; b = v; break;
-        case 5: r = v; g = p; b = q; break;
+        case 5: r = p; g = q; b = v; break;
         default: r = 0; g = 0; b = 0;
       }
 
@@ -290,10 +499,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       if (aspectRatio > 1) delta /= aspectRatio;
       return delta;
     }
-
-    // ============================================================
-    // Shader Compilation
-    // ============================================================
 
     function compileShader(type: number, source: string, keywords?: string[]) {
       source = addKeywords(source, keywords);
@@ -398,464 +603,456 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       }
     }
 
-    // ============================================================
-    // Shader Sources
-    // ============================================================
-
     const baseVertexShader = compileShader(gl.VERTEX_SHADER, `
-            precision highp float;
-            attribute vec2 aPosition;
-            varying vec2 vUv;
-            varying vec2 vL;
-            varying vec2 vR;
-            varying vec2 vT;
-            varying vec2 vB;
-            uniform vec2 texelSize;
+      precision highp float;
+      attribute vec2 aPosition;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform vec2 texelSize;
 
-            void main () {
-                vUv = aPosition * 0.5 + 0.5;
-                vL = vUv - vec2(texelSize.x, 0.0);
-                vR = vUv + vec2(texelSize.x, 0.0);
-                vT = vUv + vec2(0.0, texelSize.y);
-                vB = vUv - vec2(0.0, texelSize.y);
-                gl_Position = vec4(aPosition, 0.0, 1.0);
-            }
-        `)!;
+      void main () {
+        vUv = aPosition * 0.5 + 0.5;
+        vL = vUv - vec2(texelSize.x, 0.0);
+        vR = vUv + vec2(texelSize.x, 0.0);
+        vT = vUv + vec2(0.0, texelSize.y);
+        vB = vUv - vec2(0.0, texelSize.y);
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `)!;
 
     const blurVertexShader = compileShader(gl.VERTEX_SHADER, `
-            precision highp float;
-            attribute vec2 aPosition;
-            varying vec2 vUv;
-            varying vec2 vL;
-            varying vec2 vR;
-            uniform vec2 texelSize;
+      precision highp float;
+      attribute vec2 aPosition;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      uniform vec2 texelSize;
 
-            void main () {
-                vUv = aPosition * 0.5 + 0.5;
-                float offset = 1.33333333;
-                vL = vUv - texelSize * offset;
-                vR = vUv + texelSize * offset;
-                gl_Position = vec4(aPosition, 0.0, 1.0);
-            }
-        `)!;
+      void main () {
+        vUv = aPosition * 0.5 + 0.5;
+        float offset = 1.33333333;
+        vL = vUv - texelSize * offset;
+        vR = vUv + texelSize * offset;
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `)!;
 
     const blurShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying vec2 vUv;
-            varying vec2 vL;
-            varying vec2 vR;
-            uniform sampler2D uTexture;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      uniform sampler2D uTexture;
 
-            void main () {
-                vec4 sum = texture2D(uTexture, vUv) * 0.29411764;
-                sum += texture2D(uTexture, vL) * 0.35294117;
-                sum += texture2D(uTexture, vR) * 0.35294117;
-                gl_FragColor = sum;
-            }
-        `)!;
+      void main () {
+        vec4 sum = texture2D(uTexture, vUv) * 0.29411764;
+        sum += texture2D(uTexture, vL) * 0.35294117;
+        sum += texture2D(uTexture, vR) * 0.35294117;
+        gl_FragColor = sum;
+      }
+    `)!;
 
     const copyShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            uniform sampler2D uTexture;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      uniform sampler2D uTexture;
 
-            void main () {
-                gl_FragColor = texture2D(uTexture, vUv);
-            }
-        `)!;
+      void main () {
+        gl_FragColor = texture2D(uTexture, vUv);
+      }
+    `)!;
 
     const clearShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            uniform sampler2D uTexture;
-            uniform float value;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      uniform sampler2D uTexture;
+      uniform float value;
 
-            void main () {
-                gl_FragColor = value * texture2D(uTexture, vUv);
-            }
-        `)!;
+      void main () {
+        gl_FragColor = value * texture2D(uTexture, vUv);
+      }
+    `)!;
 
     const colorShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            uniform vec4 color;
+      precision mediump float;
+      uniform vec4 color;
 
-            void main () {
-                gl_FragColor = color;
-            }
-        `)!;
+      void main () {
+        gl_FragColor = color;
+      }
+    `)!;
 
     const checkerboardShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uTexture;
-            uniform float aspectRatio;
-            #define SCALE 25.0
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTexture;
+      uniform float aspectRatio;
+      #define SCALE 25.0
 
-            void main () {
-                vec2 uv = floor(vUv * SCALE * vec2(aspectRatio, 1.0));
-                float v = mod(uv.x + uv.y, 2.0);
-                v = v * 0.1 + 0.8;
-                gl_FragColor = vec4(vec3(v), 1.0);
-            }
-        `)!;
+      void main () {
+        vec2 uv = floor(vUv * SCALE * vec2(aspectRatio, 1.0));
+        float v = mod(uv.x + uv.y, 2.0);
+        v = v * 0.1 + 0.8;
+        gl_FragColor = vec4(vec3(v), 1.0);
+      }
+    `)!;
 
     const displayShaderSource = `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            varying vec2 vL;
-            varying vec2 vR;
-            varying vec2 vT;
-            varying vec2 vB;
-            uniform sampler2D uTexture;
-            uniform sampler2D uBloom;
-            uniform sampler2D uSunrays;
-            uniform sampler2D uDithering;
-            uniform vec2 ditherScale;
-            uniform vec2 texelSize;
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uTexture;
+      uniform sampler2D uBloom;
+      uniform sampler2D uSunrays;
+      uniform sampler2D uDithering;
+      uniform vec2 ditherScale;
+      uniform vec2 texelSize;
 
-            vec3 linearToGamma (vec3 color) {
-                color = max(color, vec3(0));
-                return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
-            }
+      vec3 linearToGamma (vec3 color) {
+        color = max(color, vec3(0));
+        return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
+      }
 
-            void main () {
-                vec3 c = texture2D(uTexture, vUv).rgb;
+      void main () {
+        vec3 c = texture2D(uTexture, vUv).rgb;
 
-            #ifdef SHADING
-                vec3 lc = texture2D(uTexture, vL).rgb;
-                vec3 rc = texture2D(uTexture, vR).rgb;
-                vec3 tc = texture2D(uTexture, vT).rgb;
-                vec3 bc = texture2D(uTexture, vB).rgb;
+      #ifdef SHADING
+        vec3 lc = texture2D(uTexture, vL).rgb;
+        vec3 rc = texture2D(uTexture, vR).rgb;
+        vec3 tc = texture2D(uTexture, vT).rgb;
+        vec3 bc = texture2D(uTexture, vB).rgb;
 
-                float dx = length(rc) - length(lc);
-                float dy = length(tc) - length(bc);
+        float dx = length(rc) - length(lc);
+        float dy = length(tc) - length(bc);
 
-                vec3 n = normalize(vec3(dx, dy, length(texelSize)));
-                vec3 l = vec3(0.0, 0.0, 1.0);
+        vec3 n = normalize(vec3(dx, dy, length(texelSize)));
+        vec3 l = vec3(0.0, 0.0, 1.0);
 
-                float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
-                c *= diffuse;
-            #endif
+        float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
+        c *= diffuse;
+      #endif
 
-            #ifdef BLOOM
-                vec3 bloom = texture2D(uBloom, vUv).rgb;
-            #endif
+      #ifdef BLOOM
+        vec3 bloom = texture2D(uBloom, vUv).rgb;
+      #endif
 
-            #ifdef SUNRAYS
-                float sunrays = texture2D(uSunrays, vUv).r;
-                c *= sunrays;
-            #ifdef BLOOM
-                bloom *= sunrays;
-            #endif
-            #endif
+      #ifdef SUNRAYS
+        float sunrays = texture2D(uSunrays, vUv).r;
+        c *= sunrays;
+      #ifdef BLOOM
+        bloom *= sunrays;
+      #endif
+      #endif
 
-            #ifdef BLOOM
-                float noise = texture2D(uDithering, vUv * ditherScale).r;
-                noise = noise * 2.0 - 1.0;
-                bloom += noise / 255.0;
-                bloom = linearToGamma(bloom);
-                c += bloom;
-            #endif
+      #ifdef BLOOM
+        float noise = texture2D(uDithering, vUv * ditherScale).r;
+        noise = noise * 2.0 - 1.0;
+        bloom += noise / 255.0;
+        bloom = linearToGamma(bloom);
+        c += bloom;
+      #endif
 
-                float a = max(c.r, max(c.g, c.b));
-                gl_FragColor = vec4(c, a);
-            }
-        `;
+        float a = max(c.r, max(c.g, c.b));
+        gl_FragColor = vec4(c, a);
+      }
+    `;
 
     const bloomPrefilterShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uTexture;
-            uniform vec3 curve;
-            uniform float threshold;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTexture;
+      uniform vec3 curve;
+      uniform float threshold;
 
-            void main () {
-                vec3 c = texture2D(uTexture, vUv).rgb;
-                float br = max(c.r, max(c.g, c.b));
-                float rq = clamp(br - curve.x, 0.0, curve.y);
-                rq = curve.z * rq * rq;
-                c *= max(rq, br - threshold) / max(br, 0.0001);
-                gl_FragColor = vec4(c, 0.0);
-            }
-        `)!;
+      void main () {
+        vec3 c = texture2D(uTexture, vUv).rgb;
+        float br = max(c.r, max(c.g, c.b));
+        float rq = clamp(br - curve.x, 0.0, curve.y);
+        rq = curve.z * rq * rq;
+        c *= max(rq, br - threshold) / max(br, 0.0001);
+        gl_FragColor = vec4(c, 0.0);
+      }
+    `)!;
 
     const bloomBlurShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying vec2 vL;
-            varying vec2 vR;
-            varying vec2 vT;
-            varying vec2 vB;
-            uniform sampler2D uTexture;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uTexture;
 
-            void main () {
-                vec4 sum = vec4(0.0);
-                sum += texture2D(uTexture, vL);
-                sum += texture2D(uTexture, vR);
-                sum += texture2D(uTexture, vT);
-                sum += texture2D(uTexture, vB);
-                sum *= 0.25;
-                gl_FragColor = sum;
-            }
-        `)!;
+      void main () {
+        vec4 sum = vec4(0.0);
+        sum += texture2D(uTexture, vL);
+        sum += texture2D(uTexture, vR);
+        sum += texture2D(uTexture, vT);
+        sum += texture2D(uTexture, vB);
+        sum *= 0.25;
+        gl_FragColor = sum;
+      }
+    `)!;
 
     const bloomFinalShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying vec2 vL;
-            varying vec2 vR;
-            varying vec2 vT;
-            varying vec2 vB;
-            uniform sampler2D uTexture;
-            uniform float intensity;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uTexture;
+      uniform float intensity;
 
-            void main () {
-                vec4 sum = vec4(0.0);
-                sum += texture2D(uTexture, vL);
-                sum += texture2D(uTexture, vR);
-                sum += texture2D(uTexture, vT);
-                sum += texture2D(uTexture, vB);
-                sum *= 0.25;
-                gl_FragColor = sum * intensity;
-            }
-        `)!;
+      void main () {
+        vec4 sum = vec4(0.0);
+        sum += texture2D(uTexture, vL);
+        sum += texture2D(uTexture, vR);
+        sum += texture2D(uTexture, vT);
+        sum += texture2D(uTexture, vB);
+        sum *= 0.25;
+        gl_FragColor = sum * intensity;
+      }
+    `)!;
 
     const sunraysMaskShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uTexture;
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTexture;
 
-            void main () {
-                vec4 c = texture2D(uTexture, vUv);
-                float br = max(c.r, max(c.g, c.b));
-                c.a = 1.0 - min(max(br * 20.0, 0.0), 0.8);
-                gl_FragColor = c;
-            }
-        `)!;
+      void main () {
+        vec4 c = texture2D(uTexture, vUv);
+        float br = max(c.r, max(c.g, c.b));
+        c.a = 1.0 - min(max(br * 20.0, 0.0), 0.8);
+        gl_FragColor = c;
+      }
+    `)!;
 
     const sunraysShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uTexture;
-            uniform float weight;
-            #define ITERATIONS 16
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTexture;
+      uniform float weight;
+      #define ITERATIONS 16
 
-            void main () {
-                float Density = 0.3;
-                float Decay = 0.95;
-                float Exposure = 0.7;
+      void main () {
+        float Density = 0.3;
+        float Decay = 0.95;
+        float Exposure = 0.7;
 
-                vec2 coord = vUv;
-                vec2 dir = vUv - 0.5;
+        vec2 coord = vUv;
+        vec2 dir = vUv - 0.5;
 
-                dir *= 1.0 / float(ITERATIONS) * Density;
-                float illuminationDecay = 1.0;
+        dir *= 1.0 / float(ITERATIONS) * Density;
+        float illuminationDecay = 1.0;
 
-                float color = texture2D(uTexture, vUv).a;
+        float color = texture2D(uTexture, vUv).a;
 
-                for (int i = 0; i < ITERATIONS; i++) {
-                    coord -= dir;
-                    float col = texture2D(uTexture, coord).a;
-                    color += col * illuminationDecay * weight;
-                    illuminationDecay *= Decay;
-                }
+        for (int i = 0; i < ITERATIONS; i++) {
+          coord -= dir;
+          float col = texture2D(uTexture, coord).a;
+          color += col * illuminationDecay * weight;
+          illuminationDecay *= Decay;
+        }
 
-                gl_FragColor = vec4(color * Exposure, 0.0, 0.0, 1.0);
-            }
-        `)!;
+        gl_FragColor = vec4(color * Exposure, 0.0, 0.0, 1.0);
+      }
+    `)!;
 
     const splatShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uTarget;
-            uniform float aspectRatio;
-            uniform vec3 color;
-            uniform vec2 point;
-            uniform float radius;
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTarget;
+      uniform float aspectRatio;
+      uniform vec3 color;
+      uniform vec2 point;
+      uniform float radius;
 
-            void main () {
-                vec2 p = vUv - point.xy;
-                p.x *= aspectRatio;
-                vec3 splat = exp(-dot(p, p) / radius) * color;
-                vec3 base = texture2D(uTarget, vUv).xyz;
-                gl_FragColor = vec4(base + splat, 1.0);
-            }
-        `)!;
+      void main () {
+        vec2 p = vUv - point.xy;
+        p.x *= aspectRatio;
+        vec3 splat = exp(-dot(p, p) / radius) * color;
+        vec3 base = texture2D(uTarget, vUv).xyz;
+        gl_FragColor = vec4(base + splat, 1.0);
+      }
+    `)!;
 
     const advectionShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            uniform sampler2D uVelocity;
-            uniform sampler2D uSource;
-            uniform vec2 texelSize;
-            uniform vec2 dyeTexelSize;
-            uniform float dt;
-            uniform float dissipation;
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uVelocity;
+      uniform sampler2D uSource;
+      uniform vec2 texelSize;
+      uniform vec2 dyeTexelSize;
+      uniform float dt;
+      uniform float dissipation;
 
-            vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
-                vec2 st = uv / tsize - 0.5;
-                vec2 iuv = floor(st);
-                vec2 fuv = fract(st);
+      vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
+        vec2 st = uv / tsize - 0.5;
+        vec2 iuv = floor(st);
+        vec2 fuv = fract(st);
 
-                vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
-                vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
-                vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
-                vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
+        vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
+        vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
+        vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
+        vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
 
-                return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
-            }
+        return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+      }
 
-            void main () {
-            #ifdef MANUAL_FILTERING
-                vec2 coord = vUv - dt * bilerp(uVelocity, vUv, texelSize).xy * texelSize;
-                vec4 result = bilerp(uSource, coord, dyeTexelSize);
-            #else
-                vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
-                vec4 result = texture2D(uSource, coord);
-            #endif
-                float decay = 1.0 + dissipation * dt;
-                gl_FragColor = result / decay;
-            }`,
+      void main () {
+      #ifdef MANUAL_FILTERING
+        vec2 coord = vUv - dt * bilerp(uVelocity, vUv, texelSize).xy * texelSize;
+        vec4 result = bilerp(uSource, coord, dyeTexelSize);
+      #else
+        vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
+        vec4 result = texture2D(uSource, coord);
+      #endif
+        float decay = 1.0 + dissipation * dt;
+        gl_FragColor = result / decay;
+      }`,
       ext.supportLinearFiltering ? undefined : ['MANUAL_FILTERING']
     )!;
 
     const divergenceShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            varying highp vec2 vL;
-            varying highp vec2 vR;
-            varying highp vec2 vT;
-            varying highp vec2 vB;
-            uniform sampler2D uVelocity;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uVelocity;
 
-            void main () {
-                float L = texture2D(uVelocity, vL).x;
-                float R = texture2D(uVelocity, vR).x;
-                float T = texture2D(uVelocity, vT).y;
-                float B = texture2D(uVelocity, vB).y;
+      void main () {
+        float L = texture2D(uVelocity, vL).x;
+        float R = texture2D(uVelocity, vR).x;
+        float T = texture2D(uVelocity, vT).y;
+        float B = texture2D(uVelocity, vB).y;
 
-                vec2 C = texture2D(uVelocity, vUv).xy;
-                if (vL.x < 0.0) { L = -C.x; }
-                if (vR.x > 1.0) { R = -C.x; }
-                if (vT.y > 1.0) { T = -C.y; }
-                if (vB.y < 0.0) { B = -C.y; }
+        vec2 C = texture2D(uVelocity, vUv).xy;
+        if (vL.x < 0.0) { L = -C.x; }
+        if (vR.x > 1.0) { R = -C.x; }
+        if (vT.y > 1.0) { T = -C.y; }
+        if (vB.y < 0.0) { B = -C.y; }
 
-                float div = 0.5 * (R - L + T - B);
-                gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
-            }
-        `)!;
+        float div = 0.5 * (R - L + T - B);
+        gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
+      }
+    `)!;
 
     const curlShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            varying highp vec2 vL;
-            varying highp vec2 vR;
-            varying highp vec2 vT;
-            varying highp vec2 vB;
-            uniform sampler2D uVelocity;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uVelocity;
 
-            void main () {
-                float L = texture2D(uVelocity, vL).y;
-                float R = texture2D(uVelocity, vR).y;
-                float T = texture2D(uVelocity, vT).x;
-                float B = texture2D(uVelocity, vB).x;
-                float vorticity = R - L - T + B;
-                gl_FragColor = vec4(0.5 * vorticity, 0.0, 0.0, 1.0);
-            }
-        `)!;
+      void main () {
+        float L = texture2D(uVelocity, vL).y;
+        float R = texture2D(uVelocity, vR).y;
+        float T = texture2D(uVelocity, vT).x;
+        float B = texture2D(uVelocity, vB).x;
+        float vorticity = R - L - T + B;
+        gl_FragColor = vec4(0.5 * vorticity, 0.0, 0.0, 1.0);
+      }
+    `)!;
 
     const vorticityShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision highp float;
-            precision highp sampler2D;
-            varying vec2 vUv;
-            varying vec2 vL;
-            varying vec2 vR;
-            varying vec2 vT;
-            varying vec2 vB;
-            uniform sampler2D uVelocity;
-            uniform sampler2D uCurl;
-            uniform float curl;
-            uniform float dt;
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uVelocity;
+      uniform sampler2D uCurl;
+      uniform float curl;
+      uniform float dt;
 
-            void main () {
-                float L = texture2D(uCurl, vL).x;
-                float R = texture2D(uCurl, vR).x;
-                float T = texture2D(uCurl, vT).x;
-                float B = texture2D(uCurl, vB).x;
-                float C = texture2D(uCurl, vUv).x;
+      void main () {
+        float L = texture2D(uCurl, vL).x;
+        float R = texture2D(uCurl, vR).x;
+        float T = texture2D(uCurl, vT).x;
+        float B = texture2D(uCurl, vB).x;
+        float C = texture2D(uCurl, vUv).x;
 
-                vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
-                force /= length(force) + 0.0001;
-                force *= curl * C;
-                force.y *= -1.0;
+        vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+        force /= length(force) + 0.0001;
+        force *= curl * C;
+        force.y *= -1.0;
 
-                vec2 velocity = texture2D(uVelocity, vUv).xy;
-                velocity += force * dt;
-                velocity = min(max(velocity, -1000.0), 1000.0);
-                gl_FragColor = vec4(velocity, 0.0, 1.0);
-            }
-        `)!;
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        velocity += force * dt;
+        velocity = min(max(velocity, -1000.0), 1000.0);
+        gl_FragColor = vec4(velocity, 0.0, 1.0);
+      }
+    `)!;
 
     const pressureShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            varying highp vec2 vL;
-            varying highp vec2 vR;
-            varying highp vec2 vT;
-            varying highp vec2 vB;
-            uniform sampler2D uPressure;
-            uniform sampler2D uDivergence;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uPressure;
+      uniform sampler2D uDivergence;
 
-            void main () {
-                float L = texture2D(uPressure, vL).x;
-                float R = texture2D(uPressure, vR).x;
-                float T = texture2D(uPressure, vT).x;
-                float B = texture2D(uPressure, vB).x;
-                float C = texture2D(uPressure, vUv).x;
-                float divergence = texture2D(uDivergence, vUv).x;
-                float pressure = (L + R + B + T - divergence) * 0.25;
-                gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
-            }
-        `)!;
+      void main () {
+        float L = texture2D(uPressure, vL).x;
+        float R = texture2D(uPressure, vR).x;
+        float T = texture2D(uPressure, vT).x;
+        float B = texture2D(uPressure, vB).x;
+        float C = texture2D(uPressure, vUv).x;
+        float divergence = texture2D(uDivergence, vUv).x;
+        float pressure = (L + R + B + T - divergence) * 0.25;
+        gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
+      }
+    `)!;
 
     const gradientSubtractShader = compileShader(gl.FRAGMENT_SHADER, `
-            precision mediump float;
-            precision mediump sampler2D;
-            varying highp vec2 vUv;
-            varying highp vec2 vL;
-            varying highp vec2 vR;
-            varying highp vec2 vT;
-            varying highp vec2 vB;
-            uniform sampler2D uPressure;
-            uniform sampler2D uVelocity;
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uPressure;
+      uniform sampler2D uVelocity;
 
-            void main () {
-                float L = texture2D(uPressure, vL).x;
-                float R = texture2D(uPressure, vR).x;
-                float T = texture2D(uPressure, vT).x;
-                float B = texture2D(uPressure, vB).x;
-                vec2 velocity = texture2D(uVelocity, vUv).xy;
-                velocity.xy -= vec2(R - L, T - B);
-                gl_FragColor = vec4(velocity, 0.0, 1.0);
-            }
-        `)!;
-
-    // ============================================================
-    // Framebuffer Objects
-    // ============================================================
+      void main () {
+        float L = texture2D(uPressure, vL).x;
+        float R = texture2D(uPressure, vR).x;
+        float T = texture2D(uPressure, vT).x;
+        float B = texture2D(uPressure, vB).x;
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        velocity.xy -= vec2(R - L, T - B);
+        gl_FragColor = vec4(velocity, 0.0, 1.0);
+      }
+    `)!;
 
     function createFBO(w: number, h: number, internalFormat: number, format: number, type: number, param: number) {
       gl.activeTexture(gl.TEXTURE0);
@@ -951,10 +1148,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       return obj;
     }
 
-    // ============================================================
-    // Blit Function
-    // ============================================================
-
     const blit = (() => {
       gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
@@ -972,16 +1165,12 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
           gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
         }
         if (clear) {
-          gl.clearColor(0.0, 0.0, 0.0, 1.0);
+          gl.clearColor(0.0, 0.0, 0.0, 0.0);
           gl.clear(gl.COLOR_BUFFER_BIT);
         }
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
       };
     })();
-
-    // ============================================================
-    // Programs & Materials
-    // ============================================================
 
     const blurProgram = new Program(blurVertexShader, blurShader);
     const copyProgram = new Program(baseVertexShader, copyShader);
@@ -1003,10 +1192,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
 
     const displayMaterial = new Material(baseVertexShader, displayShaderSource);
 
-    // ============================================================
-    // Simulation State
-    // ============================================================
-
     let dye: any;
     let velocity: any;
     let divergence: any;
@@ -1018,10 +1203,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
     let sunraysTemp: any;
 
     let ditheringTexture = createTextureAsync('');
-
-    // ============================================================
-    // Pointer System - MODIFIED for auto-paint
-    // ============================================================
 
     function pointerPrototype() {
       this.id = -1;
@@ -1039,12 +1220,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
     let pointers: any[] = [];
     let splatStack: any[] = [];
     pointers.push(new pointerPrototype());
-
-    // Auto-paint flag - always true now
-
-    // ============================================================
-    // Simulation Functions
-    // ============================================================
 
     function initFramebuffers() {
       let simRes = getResolution(config.SIM_RESOLUTION);
@@ -1351,13 +1526,9 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       blit(target);
     }
 
-    // ============================================================
-    // Update Loop
-    // ============================================================
-
     let lastUpdateTime = Date.now();
     let colorUpdateTimer = 0.0;
-    let animationId: number;
+    let fluidAnimationId: number;
 
     function update() {
       const dt = calcDeltaTime();
@@ -1368,7 +1539,7 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       if (!config.PAUSED)
         step(dt);
       render(null);
-      animationId = requestAnimationFrame(update);
+      fluidAnimationId = requestAnimationFrame(update);
     }
 
     function calcDeltaTime() {
@@ -1413,7 +1584,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
       pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
 
-      // Update cursor glow position
       if (cursorGlow) {
         cursorGlow.style.left = posX / window.devicePixelRatio + 'px';
         cursorGlow.style.top = posY / window.devicePixelRatio + 'px';
@@ -1424,19 +1594,12 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       pointer.down = false;
     }
 
-    // ============================================================
-    // Event Listeners - MODIFIED for auto-paint
-    // ============================================================
-
-    // Mouse move - automatically paints
     canvas.addEventListener('mouseenter', () => {
-      // Initialize pointer on enter
       const pointer = pointers[0];
       pointer.down = true;
     });
 
     canvas.addEventListener('mouseleave', () => {
-      // Stop painting when mouse leaves
       const pointer = pointers[0];
       pointer.down = false;
       pointer.moved = false;
@@ -1451,7 +1614,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       const posX = scaleByPixelRatio(e.clientX - rect.left);
       const posY = scaleByPixelRatio(e.clientY - rect.top);
 
-      // Auto-paint: always painting when mouse is over canvas
       if (!pointer.down) {
         pointer.down = true;
         pointer.color = generateColor();
@@ -1463,13 +1625,11 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
 
       updatePointerMoveData(pointer, posX, posY);
 
-      // Show cursor glow
       if (cursorGlow) {
         cursorGlow.style.opacity = '1';
       }
     });
 
-    // Touch events for mobile
     canvas.addEventListener('touchstart', (e: TouchEvent) => {
       e.preventDefault();
       const touches = e.targetTouches;
@@ -1505,7 +1665,6 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
       }
     });
 
-    // Keyboard events
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.code === 'KeyP')
         config.PAUSED = !config.PAUSED;
@@ -1513,17 +1672,11 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
         splatStack.push(parseInt(Math.random() * 20) + 5);
     });
 
-    // Window resize
     window.addEventListener('resize', () => {
       resizeCanvas();
       initFramebuffers();
     });
 
-    // ============================================================
-    // Initialize & Start
-    // ============================================================
-
-    // Hide cursor glow on mobile
     if (isMobile() && cursorGlow) {
       cursorGlow.style.display = 'none';
     }
@@ -1532,17 +1685,10 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
     initFramebuffers();
     multipleSplats(parseInt(Math.random() * 20) + 5);
 
-    // Start the animation loop
     update();
 
-    console.log('✨ Fluid Simulation Started!');
-    console.log('🖱️ Move your mouse to paint (no click needed)');
-    console.log('⌨️ Press "P" to pause');
-    console.log('␣ Press Space for random splats');
-
-    // Cleanup function
     return () => {
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(fluidAnimationId);
       if (cursorGlow && cursorGlow.parentNode) {
         cursorGlow.parentNode.removeChild(cursorGlow);
       }
@@ -1550,19 +1696,36 @@ export const FluidBackground: React.FC<FluidSimulationProps> = ({ className = ''
   }, []);
 
   return (
-    <div ref={containerRef} className={`fixed inset-0 -z-10 ${className}`}>
+    <>
+      {/* Starfield Canvas - Background layer */}
       <canvas
         ref={canvasRef}
+        className="fixed inset-0 -z-10"
+        style={{
+          display: 'block',
+          width: '100vw',
+          height: '100vh',
+          userSelect: 'none',
+          background: '#010105',
+          cursor: 'crosshair'
+        }}
+      />
+      
+      {/* Fluid Canvas - Overlay layer with transparency */}
+      <canvas
+        ref={fluidCanvasRef}
+        className="fixed inset-0 -z-5"
         style={{
           display: 'block',
           width: '100vw',
           height: '100vh',
           cursor: 'auto',
-          background: '#111'
+          background: 'transparent',
+          pointerEvents: 'auto'
         }}
       />
-    </div>
+    </>
   );
 };
 
-export default FluidBackground;
+export default GalaxyBackground;
