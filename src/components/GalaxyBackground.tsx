@@ -14,25 +14,9 @@ interface Star {
   hasGlow?: boolean;
 }
 
-interface Planet {
-  name: string;
-  radius: number;
-  distance: number;
-  angle: number;
-  speed: number;
-  color: string;
-  glowColor: string;
-  hasRing: boolean;
-  ringColor?: string;
-  projX?: number;
-  projY?: number;
-  projZ?: number;
-}
-
 export const GalaxyBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const starsRef = useRef<Star[]>([]);
-  const planetsRef = useRef<Planet[]>([]);
   const animationRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
 
@@ -75,13 +59,13 @@ export const GalaxyBackground = () => {
         });
       }
       
-      // 2. Original twinkling stars (static on screen space) - ALL STARS MADE SMALLER
+      // 2. Original twinkling stars (static on screen space)
       for (let i = 0; i < 400; i++) {
         starsRef.current.push({
           x: Math.random() * width,
           y: Math.random() * height,
           z: 0,
-          size: 0.3 + Math.random() * 0.8, // Reduced from 0.5-1.5 to 0.3-0.8
+          size: 0.3 + Math.random() * 0.8,
           opacity: 0.3 + Math.random() * 0.5,
           color: starColors[Math.floor(Math.random() * starColors.length)],
           twinkleSpeed: 0.5 + Math.random() * 2,
@@ -91,13 +75,13 @@ export const GalaxyBackground = () => {
         });
       }
       
-      // 3. Bright twinkling stars (larger, more prominent) - SIZE REDUCED
+      // 3. Bright twinkling stars (larger, more prominent)
       for (let i = 0; i < 100; i++) {
         starsRef.current.push({
           x: Math.random() * width,
           y: Math.random() * height,
           z: 0,
-          size: 0.8 + Math.random() * 1.2, // Reduced from 1.5-2 to 0.8-1.2
+          size: 0.8 + Math.random() * 1.2,
           opacity: 0.5 + Math.random() * 0.4,
           color: '#ffffff',
           twinkleSpeed: 0.3 + Math.random() * 1,
@@ -106,19 +90,6 @@ export const GalaxyBackground = () => {
           hasGlow: true,
         });
       }
-
-      // Planets Matrix - Proportions scaled for realistic 3D depth pop
-      const baseDistance = Math.min(width, height) * 0.07;
-      planetsRef.current = [
-        { name: 'Mercury', radius: 3, distance: baseDistance * 1.2, angle: 0, speed: 0.035, color: '#b0a89c', glowColor: '#b0a89c25', hasRing: false },
-        { name: 'Venus', radius: 4.5, distance: baseDistance * 1.8, angle: 0.8, speed: 0.025, color: '#e6b856', glowColor: '#e6b85625', hasRing: false },
-        { name: 'Earth', radius: 5, distance: baseDistance * 2.5, angle: 1.6, speed: 0.018, color: '#4a90d9', glowColor: '#4a90d925', hasRing: false },
-        { name: 'Mars', radius: 4, distance: baseDistance * 3.2, angle: 2.4, speed: 0.014, color: '#e0764a', glowColor: '#e0764a25', hasRing: false },
-        { name: 'Jupiter', radius: 11, distance: baseDistance * 4.2, angle: 3.2, speed: 0.009, color: '#d8a27a', glowColor: '#d8a27a25', hasRing: false },
-        { name: 'Saturn', radius: 9, distance: baseDistance * 5.4, angle: 4.0, speed: 0.007, color: '#f2cd9b', glowColor: '#f2cd9b25', hasRing: true, ringColor: 'rgba(210, 180, 140, 0.45)' },
-        { name: 'Uranus', radius: 7, distance: baseDistance * 6.5, angle: 4.8, speed: 0.005, color: '#b0e0e6', glowColor: '#b0e0e625', hasRing: false },
-        { name: 'Neptune', radius: 6.8, distance: baseDistance * 7.5, angle: 5.6, speed: 0.004, color: '#4169e1', glowColor: '#4169e125', hasRing: false },
-      ];
     };
 
     // Advanced 3D Perspective Projection Engine (True Depth Simulation)
@@ -143,7 +114,6 @@ export const GalaxyBackground = () => {
 
       // Perspective Focal Length Calculation
       const fov = Math.max(canvas.width, canvas.height) * 0.8; 
-      const cameraDistance = fov; // Camera position offset
       
       // Perspective Scale Factor
       const scale = fov / (fov + z2); 
@@ -151,7 +121,7 @@ export const GalaxyBackground = () => {
       return {
         x: canvas.width / 2 + x3 * scale,
         y: canvas.height / 2 + y3 * scale,
-        z: z2, // Sent for depth layering (Z-buffering)
+        z: z2,
         scale: scale
       };
     };
@@ -193,16 +163,16 @@ export const GalaxyBackground = () => {
         ctx.globalAlpha = opacity;
         ctx.fill();
         
-        // Draw glow for brighter stars (glow size also reduced)
+        // Draw glow for brighter stars
         if (star.hasGlow || star.size > 0.8) {
           ctx.beginPath();
-          ctx.arc(x, y, finalSize * 2, 0, Math.PI * 2); // Reduced from 2.5 to 2
+          ctx.arc(x, y, finalSize * 2, 0, Math.PI * 2);
           ctx.fillStyle = star.color;
           ctx.globalAlpha = opacity * 0.25;
           ctx.fill();
         }
         
-        // Cross-shaped sparkle for very bright stars (sparkle size reduced)
+        // Cross-shaped sparkle for very bright stars
         if (star.size > 1.2 && twinkle > 0.8) {
           ctx.globalAlpha = opacity * 0.6;
           ctx.beginPath();
@@ -217,93 +187,7 @@ export const GalaxyBackground = () => {
       ctx.globalAlpha = 1;
     };
 
-    const drawSun = (x: number, y: number, radius: number, scale: number) => {
-      const finalRadius = radius * scale;
-      const glowRadius = finalRadius * 4;
-
-      const glowGrad = ctx.createRadialGradient(x, y, finalRadius, x, y, glowRadius);
-      glowGrad.addColorStop(0, `rgba(255, 215, 130, 0.6)`);
-      glowGrad.addColorStop(0.2, `rgba(255, 130, 30, 0.25)`);
-      glowGrad.addColorStop(0.6, `rgba(255, 60, 0, 0.05)`);
-      glowGrad.addColorStop(1, 'transparent');
-      
-      ctx.fillStyle = glowGrad;
-      ctx.beginPath();
-      ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
-      ctx.fill();
-      
-      const sunGrad = ctx.createRadialGradient(x - finalRadius * 0.2, y - finalRadius * 0.2, 0, x, y, finalRadius);
-      sunGrad.addColorStop(0, '#fffdf0');
-      sunGrad.addColorStop(0.2, '#ffdf85');
-      sunGrad.addColorStop(0.6, '#ff7700');
-      sunGrad.addColorStop(1, '#b32400');
-      
-      ctx.fillStyle = sunGrad;
-      ctx.beginPath();
-      ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    const drawPlanet = (p: Planet, scale: number) => {
-      const x = p.projX!;
-      const y = p.projY!;
-      const finalRadius = Math.max(0.8, p.radius * scale);
-
-      // Render Atmosphere Glow
-      ctx.fillStyle = p.glowColor;
-      ctx.beginPath();
-      ctx.arc(x, y, finalRadius * 1.8, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Dynamic Shading matching 3D Sunlight vectors
-      const planetGrad = ctx.createRadialGradient(x - finalRadius * 0.25, y - finalRadius * 0.25, 0, x, y, finalRadius);
-      planetGrad.addColorStop(0, p.color);
-      planetGrad.addColorStop(0.7, p.color);
-      planetGrad.addColorStop(1, '#020208'); 
-      
-      ctx.fillStyle = planetGrad;
-      ctx.beginPath();
-      ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // 3D Saturn Rings Transformation
-      if (p.hasRing) {
-        ctx.save();
-        ctx.translate(x, y);
-        // Sync ring tilt with overall Pitch (angleX) & Roll (angleZ)
-        ctx.rotate(angleZ.current);
-        ctx.scale(1, Math.abs(Math.sin(angleX.current)) * 0.6 + 0.08); 
-        
-        ctx.strokeStyle = p.ringColor || 'rgba(210, 180, 140, 0.5)';
-        ctx.lineWidth = finalRadius * 0.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, finalRadius * 1.7, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-    };
-
-    const draw3DOrbitPaths = () => {
-      ctx.lineWidth = 0.8;
-      
-      for (const planet of planetsRef.current) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.beginPath();
-        
-        // Dynamic path rendering in 3D loop
-        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.05) {
-          const ox = Math.cos(a) * planet.distance;
-          const oz = Math.sin(a) * planet.distance;
-          const pt = project3D(ox, 0, oz);
-          
-          if (a === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
-        }
-        ctx.stroke();
-      }
-    };
-
-    // ─── CONTROL LOGICS (BINA CLICK KIYE INTERACTION) ───
+    // ─── CONTROL LOGICS ───
 
     // 1. Move Mouse Left/Right -> Rotate 360 | Move Up/Down -> Tilt View
     const handleMouseMove = (e: MouseEvent) => {
@@ -319,7 +203,6 @@ export const GalaxyBackground = () => {
 
     // 2. Scroll Wheel -> Extra Rotation Control (Z-Axis Roll)
     const handleWheel = (e: WheelEvent) => {
-      // Modulates Z rotation gently on trackpad/mousewheel scroll
       targetAngleZ.current += e.deltaY * 0.002;
     };
 
@@ -334,7 +217,7 @@ export const GalaxyBackground = () => {
       targetAngleX.current = ((ty / rect.height) * Math.PI) - Math.PI / 2;
     };
 
-    // Animation Loop optimized for 120FPS setups
+    // Animation Loop
     const animate = () => {
       timeRef.current += 16;
       const time = timeRef.current;
@@ -348,47 +231,8 @@ export const GalaxyBackground = () => {
       ctx.fillStyle = '#010105';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Render background cosmos
+      // Render stars only
       drawStars(time);
-
-      // Matrix computation setup for Depth Buffering
-      const sunRadius = Math.min(canvas.width, canvas.height) * 0.038;
-      const sunProj = project3D(0, 0, 0);
-
-      const renderingQueue: any[] = [
-        { type: 'sun', z: sunProj.z, x: sunProj.x, y: sunProj.y, scale: sunProj.scale }
-      ];
-
-      // Update and map planets into perspective array
-      for (const planet of planetsRef.current) {
-        planet.angle += planet.speed; // Increment orbital movement
-        
-        const px = Math.cos(planet.angle) * planet.distance;
-        const pz = Math.sin(planet.angle) * planet.distance;
-        const py = 0; // Flat base grid inside 3D environment
-
-        const pt = project3D(px, py, pz);
-        planet.projX = pt.x;
-        planet.projY = pt.y;
-        planet.projZ = pt.z;
-
-        renderingQueue.push({ type: 'planet', z: pt.z, scale: pt.scale, data: planet });
-      }
-
-      // ─── TRUE 3D DEPTH SORTING (Z-INDEX BUFFER) ───
-      renderingQueue.sort((a, b) => b.z - a.z); // Render further objects first
-
-      // Draw Orbit system paths in perspective
-      draw3DOrbitPaths();
-
-      // Final Render cycle
-      for (const item of renderingQueue) {
-        if (item.type === 'sun') {
-          drawSun(item.x, item.y, sunRadius, item.scale);
-        } else if (item.type === 'planet') {
-          drawPlanet(item.data, item.scale);
-        }
-      }
 
       animationRef.current = requestAnimationFrame(animate);
     };
