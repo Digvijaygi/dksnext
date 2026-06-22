@@ -12,6 +12,10 @@
     {
       "src": "config-love.json",
       "use": "@vercel/static"
+    },
+    {
+      "src": "style.css",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -20,51 +24,16 @@
       "dest": "/index.html"
     },
     {
+      "src": "/webgl-fluid.js",
+      "dest": "/webgl-fluid.js"
+    },
+    {
+      "src": "/config-love.json",
+      "dest": "/config-love.json"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        }
-      ]
-    },
-    {
-      "source": "/webgl-fluid.js",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
-    },
-    {
-      "source": "/config-love.json",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/json"
-        }
-      ]
-    }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
